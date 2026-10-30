@@ -18,7 +18,10 @@ class WebSearchService
      */
     public const MAX_RESULTS = 10;
 
-    public function __construct(protected Browser $browser) {}
+    public function __construct(
+        protected Browser $browser,
+        protected WebSources $sources,
+    ) {}
 
     /**
      * Search the web in a headless browser and describe the results as text for the model.
@@ -40,7 +43,7 @@ class WebSearchService
         }
 
         return "Search results for [{$query}]:\n\n".$results
-            ->map(fn (array $result, int $index) => ($index + 1).". {$result['title']}\n   {$result['url']}\n   {$result['snippet']}")
+            ->map(fn (array $result, int $index) => ($index + 1).'. '.$this->sources->link($result['title'], $result['url'])."\n   {$result['snippet']}")
             ->implode("\n\n");
     }
 

@@ -71,6 +71,9 @@ watch(
     { immediate: true },
 );
 
+/** The site a source is on, such as "bbc.com". */
+const hostname = (url: string) => new URL(url).hostname.replace(/^www\./, '');
+
 const thread = ref<HTMLElement | null>(null);
 
 const scrollToLatest = () =>
@@ -177,6 +180,31 @@ const deleteConversation = (id: string) => {
                         >
                             {{ message.content }}
                         </p>
+                        <div
+                            v-if="message.sources.length"
+                            class="border-t border-border/60 pt-2 text-xs"
+                        >
+                            <p class="mb-1 font-medium text-muted-foreground">
+                                Sources
+                            </p>
+                            <ol class="list-decimal space-y-0.5 pl-5">
+                                <li
+                                    v-for="source in message.sources"
+                                    :key="source.url"
+                                >
+                                    <a
+                                        :href="source.url"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="underline underline-offset-4 hover:text-primary"
+                                        >{{ source.title }}</a
+                                    >
+                                    <span class="text-muted-foreground">
+                                        · {{ hostname(source.url) }}</span
+                                    >
+                                </li>
+                            </ol>
+                        </div>
                     </div>
                 </div>
 

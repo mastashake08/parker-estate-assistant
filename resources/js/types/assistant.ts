@@ -46,12 +46,18 @@ export type ToolUse = {
     failed: boolean;
 };
 
+export type WebSource = {
+    title: string;
+    url: string;
+};
+
 export type ConversationMessage = {
     id: string;
     role: 'user' | 'assistant';
     content: string | null;
     html: string | null;
     created_at: string;
+    sources: WebSource[];
     tools: ToolUse[];
 };
 

@@ -26,7 +26,7 @@ test('it renders the page in the browser and returns its readable text', functio
         ));
 
     expect(fetchPage('https://1.1.1.1/docs'))
-        ->toBe("URL: https://1.1.1.1/docs/\nTitle: Docs\n\nRendered by JavaScript");
+        ->toBe("Source: [Docs](https://1.1.1.1/docs/)\n\nRendered by JavaScript");
 });
 
 test('long pages are truncated', function () {
@@ -37,7 +37,7 @@ test('long pages are truncated', function () {
         ->andReturn(new RenderedPage('https://1.1.1.1/', 'Long', '', str_repeat('a', 25)));
 
     expect(fetchPage('https://1.1.1.1/'))
-        ->toBe("URL: https://1.1.1.1/\nTitle: Long\n\naaaaaaaaaa\n\n[Truncated: showing the first 10 of 25 characters.]");
+        ->toBe("Source: [Long](https://1.1.1.1/)\n\naaaaaaaaaa\n\n[Truncated: showing the first 10 of 25 characters.]");
 });
 
 test('only public http and https addresses may be fetched', function (string $url) {

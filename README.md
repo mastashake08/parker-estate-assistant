@@ -9,6 +9,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 - **Chat with memory**: every conversation is stored, and the model is sent the earlier messages each time you continue one.
 - **Model per conversation**: pick any installed Ollama model next to the Send button. The choice is saved with the conversation; new chats start on `ASSISTANT_MODEL` when it's installed.
 - **Live replies**: replies are generated on a queue and streamed to the browser token by token over [Laravel Reverb](https://reverb.laravel.com) WebSockets, including which tools the assistant used.
+- **Linked sources**: `web_search` and `web_fetch` return Markdown links, and every reply that used them ends with a numbered **Sources** list of the pages, so you can always click through.
 - **Tool transcript**: each reply lists the tools the assistant used. Expand one to see what it was called with and what it returned.
 - **MCP servers**: connect local (stdio) or remote (HTTP) MCP servers. Their tools become available to the assistant automatically. Each server's tool list is cached, so a local server only starts when one of its tools is used; **Refresh tools** on the Tools page lists them again. Environment variables and headers are encrypted at rest.
 - **Tools**: switch any built-in or MCP tool on or off. Built-in tools:
