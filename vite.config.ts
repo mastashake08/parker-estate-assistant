@@ -4,7 +4,11 @@ import tailwindcss from '@tailwindcss/vite';
 import vue from '@vitejs/plugin-vue';
 import laravel from 'laravel-vite-plugin';
 import { bunny } from 'laravel-vite-plugin/fonts';
-import { defineConfig, lazyPlugins } from 'vite-plus';
+import { defineConfig, lazyPlugins, loadEnv } from 'vite-plus';
+
+// Set VITE_HMR_HOST to this machine's network address (such as 192.168.0.60)
+// so other devices on the network can load pages while the dev server runs.
+const hmrHost = loadEnv('development', process.cwd(), 'VITE_').VITE_HMR_HOST;
 
 export default defineConfig({
     plugins: lazyPlugins(() => [
@@ -32,6 +36,7 @@ export default defineConfig({
         }),
     ]),
     server: {
+        ...(hmrHost ? { hmr: { host: hmrHost } } : {}),
         watch: {
             ignored: [
                 '**/.agents/**',

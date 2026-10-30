@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
-import { RefreshCw } from '@lucide/vue';
+import { LogIn, RefreshCw } from '@lucide/vue';
 import McpServerController from '@/actions/App/Http/Controllers/Assistant/McpServerController';
+import McpServerOAuthController from '@/actions/App/Http/Controllers/Assistant/McpServerOAuthController';
 import ToolController from '@/actions/App/Http/Controllers/Assistant/ToolController';
 import AlertError from '@/components/AlertError.vue';
 import Heading from '@/components/Heading.vue';
@@ -29,6 +30,10 @@ const toggle = (tool: AssistantTool, enabled: boolean) => {
         { preserveScroll: true },
     );
 };
+
+/** Leave for the server's sign-in page, which sends the user back to the MCP servers page. */
+const signIn = (server: McpServerTools) =>
+    router.post(McpServerOAuthController.store.url(server.id));
 
 const refresh = (server: McpServerTools) => {
     router.post(
@@ -81,8 +86,18 @@ const refresh = (server: McpServerTools) => {
                 </Button>
             </div>
 
+            <div
+                v-if="server.signInRequired"
+                class="flex items-center justify-between gap-4 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-sm"
+            >
+                {{ server.error }}
+                <Button size="sm" @click="signIn(server)">
+                    <LogIn class="h-4 w-4" /> Sign in
+                </Button>
+            </div>
+
             <AlertError
-                v-if="server.error"
+                v-else-if="server.error"
                 title="Could not connect to this server."
                 :errors="[server.error]"
             />

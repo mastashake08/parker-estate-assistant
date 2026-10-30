@@ -42,6 +42,28 @@ class ConversationService
     }
 
     /**
+     * Get the user's most recently active conversations.
+     *
+     * @return Collection<int, Conversation>
+     */
+    public function recent(User $user, int $limit): Collection
+    {
+        return $this->ownedBy($user)
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get(['id', 'title', 'updated_at']);
+    }
+
+    /**
+     * Count the user's conversations.
+     */
+    public function count(User $user): int
+    {
+        return $this->ownedBy($user)->count();
+    }
+
+    /**
      * Start a new conversation for the user, titled after their first message.
      */
     public function start(User $user, string $firstMessage, ?string $model = null): string
