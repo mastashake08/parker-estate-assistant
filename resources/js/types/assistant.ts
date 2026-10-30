@@ -68,10 +68,18 @@ export type PendingApproval = {
     reason: string | null;
 };
 
+export type ConversationDocument = {
+    id: number;
+    name: string;
+    mime_type: string;
+    size: number;
+};
+
 export type Conversation = {
     id: string;
     title: string;
     model: string | null;
     messages: ConversationMessage[];
     approvals: PendingApproval[];
+    documents: ConversationDocument[];
 };

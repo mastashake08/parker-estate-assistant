@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Assistant\StoreConversationMessageRequest;
 use App\Services\AssistantService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\UploadedFile;
 use Inertia\Inertia;
 
 class ConversationMessageController extends Controller
@@ -25,9 +26,14 @@ class ConversationMessageController extends Controller
             $request->validated('message'),
             $request->validated('conversation_id'),
             $request->validated('model'),
+            $request->file('documents', []),
         );
 
         Inertia::flash('pendingMessage', $request->validated('message'));
+        Inertia::flash('pendingDocuments', array_map(
+            fn (UploadedFile $file) => $file->getClientOriginalName(),
+            $request->file('documents', []),
+        ));
 
         return to_route('chat.show', $conversationId);
     }

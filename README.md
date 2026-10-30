@@ -16,6 +16,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
     - `web_search`: searches DuckDuckGo in headless Chrome and returns titles, URLs and snippets.
     - `web_fetch`: opens a page in headless Chrome (so JavaScript-rendered content works) and returns its text. It only reaches public addresses.
     - `current_date_time`: the current date and time in any timezone.
+- **Document analysis**: attach PDF, Word (.docx), text, Markdown or CSV files to a message (up to 5, 20 MB each). Their text is given to the assistant for the rest of the conversation, and long documents can be read in full with the `read_document` tool.
 - **Email and text messages that need your approval**: `send_email` (Laravel Mail) and `send_sms` (Twilio, through Laravel Notifications) never send on their own. The reply pauses and shows exactly what will be sent, with **Approve** and **Deny** buttons, and continues once you decide.
 - **Skills**: named instructions the assistant loads on demand when a task matches the skill's description.
 
@@ -51,22 +52,24 @@ Register an account, then open **Chat** from the sidebar.
 
 Most settings live in [`config/assistant.php`](config/assistant.php) and can be set from `.env`:
 
-| Variable                    | Default                             | Purpose                                                      |
-| --------------------------- | ----------------------------------- | ------------------------------------------------------------ |
-| `AI_PROVIDER`               | `ollama`                            | Provider from `config/ai.php`                                |
-| `OLLAMA_URL`                | `http://host.docker.internal:11434` | Where Ollama is listening (from inside Sail)                 |
-| `ASSISTANT_MODEL`           | `llama3.1`                          | The default model; each chat can pick another installed one  |
-| `ASSISTANT_INSTRUCTIONS`    | (built in)                          | The system prompt                                            |
-| `ASSISTANT_MEMORY_MESSAGES` | `50`                                | Earlier messages sent back with each prompt                  |
-| `ASSISTANT_MCP_STDIO`       | `true`                              | Allow local (stdio) MCP servers                              |
-| `ASSISTANT_MCP_TIMEOUT`     | `30`                                | Seconds to wait for an MCP server                            |
-| `ASSISTANT_MCP_TOOL_CACHE`  | `3600`                              | Seconds to cache each MCP server's tool list                 |
-| `BROWSER_ENDPOINT`          | `ws://chrome:3000/`                 | Remote headless Chrome; leave empty to launch a local Chrome |
-| `BROWSER_CHROME_BINARY`     | (auto-detected)                     | Path to Chrome when launching locally                        |
-| `BROWSER_TIMEOUT`           | `30`                                | Seconds to wait for a page to load                           |
-| `WEB_SEARCH_URL`            | DuckDuckGo HTML                     | Search URL; `%s` is replaced with the query                  |
-| `WEB_SEARCH_RESULTS`        | `5`                                 | Default number of search results (max 10)                    |
-| `WEB_FETCH_MAX_CHARACTERS`  | `20000`                             | Page text is truncated after this many characters            |
+| Variable                        | Default                             | Purpose                                                      |
+| ------------------------------- | ----------------------------------- | ------------------------------------------------------------ |
+| `AI_PROVIDER`                   | `ollama`                            | Provider from `config/ai.php`                                |
+| `OLLAMA_URL`                    | `http://host.docker.internal:11434` | Where Ollama is listening (from inside Sail)                 |
+| `ASSISTANT_MODEL`               | `llama3.1`                          | The default model; each chat can pick another installed one  |
+| `ASSISTANT_INSTRUCTIONS`        | (built in)                          | The system prompt                                            |
+| `ASSISTANT_MEMORY_MESSAGES`     | `50`                                | Earlier messages sent back with each prompt                  |
+| `ASSISTANT_CONTEXT_TOKENS`      | `16384`                             | Ollama's context window (`num_ctx`)                          |
+| `ASSISTANT_DOCUMENT_CHARACTERS` | `24000`                             | Document text put in the instructions                        |
+| `ASSISTANT_MCP_STDIO`           | `true`                              | Allow local (stdio) MCP servers                              |
+| `ASSISTANT_MCP_TIMEOUT`         | `30`                                | Seconds to wait for an MCP server                            |
+| `ASSISTANT_MCP_TOOL_CACHE`      | `3600`                              | Seconds to cache each MCP server's tool list                 |
+| `BROWSER_ENDPOINT`              | `ws://chrome:3000/`                 | Remote headless Chrome; leave empty to launch a local Chrome |
+| `BROWSER_CHROME_BINARY`         | (auto-detected)                     | Path to Chrome when launching locally                        |
+| `BROWSER_TIMEOUT`               | `30`                                | Seconds to wait for a page to load                           |
+| `WEB_SEARCH_URL`                | DuckDuckGo HTML                     | Search URL; `%s` is replaced with the query                  |
+| `WEB_SEARCH_RESULTS`            | `5`                                 | Default number of search results (max 10)                    |
+| `WEB_FETCH_MAX_CHARACTERS`      | `20000`                             | Page text is truncated after this many characters            |
 
 > Don't set `CHROME_PATH` in `.env`. The Chrome library reads it directly, even when it's empty. Use `BROWSER_CHROME_BINARY` instead.
 
@@ -79,6 +82,12 @@ Under Sail, the `chrome` service in [`compose.yaml`](compose.yaml) runs [browser
 Sending a message queues a `StreamAssistantReply` job and redirects straight back to the chat. The job streams the reply from the model and broadcasts each piece as an `assistant.stream` event on the user's private `App.Models.User.{id}` channel. It finishes with a `reply_complete` event, sent once the exchange has been saved, and the chat page then reloads the stored messages.
 
 This needs both a **queue worker** and the **Reverb server** running. `composer run dev` starts both. Without a worker, messages are accepted but no reply ever arrives. Reverb listens on port 8080, which `compose.yaml` publishes from the app container.
+
+### Documents
+
+The text is read when you upload: PDFs with `smalot/pdfparser`, Word files from their XML, and everything else as plain text. Scanned PDFs (pictures of text) have no text to read and are rejected. Files are kept on the private `local` disk and deleted with their conversation.
+
+The text goes into the assistant's instructions for that conversation, shared between documents up to `ASSISTANT_DOCUMENT_CHARACTERS`, and the model is told to treat it as information rather than instructions. Ollama silently drops anything beyond its context window, so the app raises it to `ASSISTANT_CONTEXT_TOKENS` (16k by default; larger uses more memory). Small models such as `llama3.2:1b` often fail to use documents or tools well, so a 7B+ model is recommended.
 
 ### Email and SMS
 

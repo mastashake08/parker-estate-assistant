@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Assistant;
 
 use App\Http\Controllers\Controller;
+use App\Models\Document;
 use App\Services\ConversationService;
+use App\Services\DocumentService;
 use App\Services\OllamaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,7 @@ class ConversationController extends Controller
     public function __construct(
         protected ConversationService $conversations,
         protected OllamaService $ollama,
+        protected DocumentService $documents,
     ) {}
 
     /**
@@ -41,6 +44,8 @@ class ConversationController extends Controller
                 ...$found->only(['id', 'title', 'model']),
                 'messages' => $this->conversations->messages($found),
                 'approvals' => $this->conversations->approvals($found),
+                'documents' => $this->documents->forConversation($request->user(), $found->id)
+                    ->map(fn (Document $document) => $document->only(['id', 'name', 'mime_type', 'size'])),
             ],
         ]);
     }
