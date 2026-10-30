@@ -5,6 +5,7 @@ namespace App\Services\Mcp;
 use App\Models\McpServer;
 use Laravel\Mcp\Client;
 use Laravel\Mcp\Client\Exceptions\OAuthException;
+use Laravel\Mcp\Client\OAuth\AuthServerDiscovery;
 use Laravel\Mcp\Client\OAuth\OAuthClient;
 use Laravel\Mcp\Client\OAuth\TokenSet;
 
@@ -14,6 +15,8 @@ class McpOAuthService
      * Refresh an access token this many seconds before it expires.
      */
     protected const REFRESH_LEEWAY_SECONDS = 60;
+
+    public function __construct(protected AuthServerDiscovery $discovery) {}
 
     /**
      * Start signing in to the server: discover its authorization server,
@@ -87,6 +90,8 @@ class McpOAuthService
 
     /**
      * Build the OAuth client for the server, returning to the server's callback route.
+     *
+     * @throws OAuthException
      */
     protected function oauthClient(McpServer $server): OAuthClient
     {
@@ -95,10 +100,25 @@ class McpOAuthService
             ->withOAuth(
                 clientId: $server->oauth_client_id,
                 clientSecret: $server->oauth_client_secret,
-                scope: $server->oauth_scope,
+                scope: $server->oauth_scope ?? $this->advertisedScope($server),
                 redirectUri: route('mcp-servers.oauth.callback', $server),
             )
             ->oAuthClient();
+    }
+
+    /**
+     * The scopes the server advertises, for when the user has not entered any.
+     *
+     * Without them the client asks for "mcp:use", which servers such as
+     * Stripe's reject.
+     *
+     * @throws OAuthException
+     */
+    protected function advertisedScope(McpServer $server): ?string
+    {
+        $scopes = $this->discovery->discover((string) $server->url)->scopesSupported;
+
+        return $scopes === [] ? null : implode(' ', $scopes);
     }
 
     /**

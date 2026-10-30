@@ -19,9 +19,10 @@ beforeEach(function () {
     AuthServerDiscovery::resolveHostsUsing(fn () => ['93.184.216.34']);
 
     Http::fake([
-        'https://mcp.acme.com/.well-known/oauth-protected-resource/mcp' => Http::response([
+        'https://mcp.acme.com/.well-known/oauth-protected-resource/mcp' => fn () => Http::response([
             'resource' => 'https://mcp.acme.com/mcp',
             'authorization_servers' => ['https://auth.acme.com'],
+            ...$this->resourceMetadata ?? [],
         ]),
         'https://auth.acme.com/.well-known/oauth-authorization-server' => Http::response([
             'issuer' => 'https://auth.acme.com',
@@ -79,6 +80,17 @@ test('signing in registers the app and sends the user to the server\'s sign-in p
 
     Http::assertSent(fn (Request $request) => $request->url() === 'https://auth.acme.com/register'
         && $request['redirect_uris'] === [route('mcp-servers.oauth.callback', $server)]);
+});
+
+test('the scopes the server advertises are requested when none are entered', function () {
+    $this->resourceMetadata = ['scopes_supported' => ['mcp', 'payments']];
+    $user = User::factory()->create();
+    $server = McpServer::factory()->for($user)->http()->create();
+
+    expect(startSignIn($user, $server)['scope'])->toBe('mcp payments');
+
+    Http::assertSent(fn (Request $request) => $request->url() === 'https://auth.acme.com/register'
+        && $request['scope'] === 'mcp payments');
 });
 
 test('a client ID entered for the server is used instead of registering', function () {
