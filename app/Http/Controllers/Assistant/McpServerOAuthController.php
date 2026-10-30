@@ -74,10 +74,19 @@ class McpServerOAuthController extends Controller
 
     /**
      * Return to the server list with the reason signing in failed.
+     *
+     * The callback address is built from the address the app was opened at,
+     * and providers usually reject plain http callbacks other than localhost.
      */
     protected function failed(OAuthException $exception): RedirectResponse
     {
-        Inertia::flash('toast', ['type' => 'error', 'message' => __('Could not sign in: :reason', ['reason' => $exception->getMessage()])]);
+        $message = __('Could not sign in: :reason', ['reason' => $exception->getMessage()]);
+
+        if (! request()->secure() && ! in_array(request()->getHost(), ['localhost', '127.0.0.1', '[::1]'], true)) {
+            $message .= ' '.__('Most sign-in providers only accept https addresses or localhost, so open the app at http://localhost and sign in from there.');
+        }
+
+        Inertia::flash('toast', ['type' => 'error', 'message' => $message]);
 
         return to_route('mcp-servers.index');
     }

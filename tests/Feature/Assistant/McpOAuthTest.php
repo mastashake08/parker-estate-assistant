@@ -30,7 +30,7 @@ beforeEach(function () {
             'registration_endpoint' => 'https://auth.acme.com/register',
             'code_challenge_methods_supported' => ['S256'],
         ]),
-        'https://auth.acme.com/register' => Http::response(['client_id' => 'registered-client']),
+        'https://auth.acme.com/register' => fn () => $this->registrationResponse ?? Http::response(['client_id' => 'registered-client']),
         'https://auth.acme.com/token' => fn () => $this->tokenResponse ?? Http::response([
             'access_token' => 'new-access',
             'refresh_token' => 'new-refresh',
@@ -264,4 +264,26 @@ test('the tools page asks the user to sign in when a server requires it', functi
             ->where('servers.0.signInRequired', true)
             ->where('servers.0.error', 'Sign in to this server to use its tools.')
         );
+});
+
+test('a failed sign-in from a plain http address other than localhost suggests using localhost', function () {
+    $this->registrationResponse = Http::response(['error' => 'invalid_redirect_uri'], 400);
+    $user = User::factory()->create();
+    $server = McpServer::factory()->for($user)->http()->create();
+
+    $this->actingAs($user)
+        ->post('http://192.168.0.60/settings/mcp-servers/'.$server->id.'/oauth')
+        ->assertRedirect()
+        ->assertInertiaFlash('toast.message', 'Could not sign in: Dynamic client registration failed with status [400]. Most sign-in providers only accept https addresses or localhost, so open the app at http://localhost and sign in from there.');
+});
+
+test('a failed sign-in from localhost does not suggest localhost', function () {
+    $this->registrationResponse = Http::response(['error' => 'invalid_redirect_uri'], 400);
+    $user = User::factory()->create();
+    $server = McpServer::factory()->for($user)->http()->create();
+
+    $this->actingAs($user)
+        ->post('http://localhost/settings/mcp-servers/'.$server->id.'/oauth')
+        ->assertRedirect()
+        ->assertInertiaFlash('toast.message', 'Could not sign in: Dynamic client registration failed with status [400].');
 });
