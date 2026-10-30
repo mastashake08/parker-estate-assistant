@@ -59,7 +59,7 @@ Most settings live in [`config/assistant.php`](config/assistant.php) and can be 
 | `ASSISTANT_MCP_STDIO`       | `true`                              | Allow local (stdio) MCP servers                              |
 | `ASSISTANT_MCP_TIMEOUT`     | `30`                                | Seconds to wait for an MCP server                            |
 | `ASSISTANT_MCP_TOOL_CACHE`  | `3600`                              | Seconds to cache each MCP server's tool list                 |
-| `BROWSER_ENDPOINT`          | `ws://chrome:3000`                  | Remote headless Chrome; leave empty to launch a local Chrome |
+| `BROWSER_ENDPOINT`          | `ws://chrome:3000/`                 | Remote headless Chrome; leave empty to launch a local Chrome |
 | `BROWSER_CHROME_BINARY`     | (auto-detected)                     | Path to Chrome when launching locally                        |
 | `BROWSER_TIMEOUT`           | `30`                                | Seconds to wait for a page to load                           |
 | `WEB_SEARCH_URL`            | DuckDuckGo HTML                     | Search URL; `%s` is replaced with the query                  |
@@ -70,7 +70,7 @@ Most settings live in [`config/assistant.php`](config/assistant.php) and can be 
 
 ### Headless browser
 
-Under Sail, the `chrome` service in [`compose.yaml`](compose.yaml) runs [browserless/chromium](https://github.com/browserless/browserless) and the app connects to it at `ws://chrome:3000`. Outside Docker (for example with Herd), set `BROWSER_ENDPOINT=` and the Chrome installed on the machine is launched instead.
+Under Sail, the `chrome` service in [`compose.yaml`](compose.yaml) runs [browserless/chromium](https://github.com/browserless/browserless) and the app connects to it at `ws://chrome:3000/`. Outside Docker (for example with Herd), set `BROWSER_ENDPOINT=` and the Chrome installed on the machine is launched instead.
 
 ### Live replies (Reverb)
 
