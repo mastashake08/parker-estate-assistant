@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Laravel\Ai\Contracts\Tool;
+use Laravel\Mcp\Client\Exceptions\AuthorizationRequiredException;
 use Laravel\Mcp\Client\Primitives\Tool as McpTool;
 use Throwable;
 
@@ -23,7 +24,7 @@ class ToolService
      *
      * @return array{
      *     builtin: array<int, array{key: string, name: string, description: string, enabled: bool}>,
-     *     servers: array<int, array{id: int, name: string, error: string|null, tools: array<int, array{key: string, name: string, description: string, enabled: bool}>}>
+     *     servers: array<int, array{id: int, name: string, error: string|null, signInRequired: bool, tools: array<int, array{key: string, name: string, description: string, enabled: bool}>}>
      * }
      */
     public function catalog(User $user): array
@@ -45,15 +46,22 @@ class ToolService
                 try {
                     $tools = $this->servers->tools($server);
                     $error = null;
+                    $signInRequired = false;
+                } catch (AuthorizationRequiredException) {
+                    $tools = collect();
+                    $error = 'Sign in to this server to use its tools.';
+                    $signInRequired = true;
                 } catch (Throwable $exception) {
                     $tools = collect();
                     $error = $exception->getMessage();
+                    $signInRequired = false;
                 }
 
                 return [
                     'id' => $server->id,
                     'name' => $server->name,
                     'error' => $error,
+                    'signInRequired' => $signInRequired,
                     'tools' => $tools->map(fn (McpTool $tool) => [
                         'key' => $server->toolKey($tool->name),
                         'name' => $tool->name,

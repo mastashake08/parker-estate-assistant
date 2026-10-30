@@ -44,6 +44,9 @@ class StoreMcpServerRequest extends FormRequest
             'url' => ['required_if:transport,http', 'nullable', 'url', 'max:2048'],
             'headers' => ['nullable', 'array'],
             'headers.*' => ['string', 'max:4000'],
+            'oauth_client_id' => ['nullable', 'string', 'max:255'],
+            'oauth_client_secret' => ['nullable', 'string', 'max:1000'],
+            'oauth_scope' => ['nullable', 'string', 'max:255'],
             'timeout' => ['nullable', 'integer', 'min:1', 'max:600'],
             'enabled' => ['sometimes', 'boolean'],
         ];

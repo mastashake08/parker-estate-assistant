@@ -7,6 +7,9 @@ export type McpServer = {
     command: string | null;
     args: string[] | null;
     url: string | null;
+    oauth_client_id: string | null;
+    oauth_scope: string | null;
+    signed_in: boolean;
     timeout: number | null;
     enabled: boolean;
 };
@@ -22,6 +25,7 @@ export type McpServerTools = {
     id: number;
     name: string;
     error: string | null;
+    signInRequired: boolean;
     tools: AssistantTool[];
 };
 
@@ -73,6 +77,24 @@ export type ConversationDocument = {
     name: string;
     mime_type: string;
     size: number;
+};
+
+export type EnabledCount = {
+    enabled: number;
+    total: number;
+};
+
+export type DashboardStats = {
+    conversations: number;
+    documents: number;
+    skills: EnabledCount;
+    mcpServers: EnabledCount;
+};
+
+export type ModelStatus = {
+    name: string;
+    installed: boolean;
+    available: string[];
 };
 
 export type Conversation = {
