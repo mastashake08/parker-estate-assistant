@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
 
@@ -18,6 +19,7 @@ test('authenticated users can visit the dashboard', function () {
     $response->assertOk();
 });
 test('users can use the app without verifying their email', function () {
+    Http::fake(['*/api/tags' => Http::response(['models' => []])]);
     $this->actingAs(User::factory()->unverified()->create());
 
     $this->get(route('dashboard'))->assertOk();
