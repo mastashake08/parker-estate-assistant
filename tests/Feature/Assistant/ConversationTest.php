@@ -217,6 +217,33 @@ test('long tool results are shortened in the transcript', function () {
         );
 });
 
+test('assistant replies are shown as formatted Markdown', function () {
+    EstateAssistant::fake(["Here you go:\n\n1. **Hack**: [BBC](https://www.bbc.com/news)\n2. `code`"]);
+    $user = User::factory()->create();
+    $this->actingAs($user)->post(route('chat.messages.store'), ['message' => 'News?']);
+
+    $this->actingAs($user)
+        ->get(route('chat.show', Conversation::sole()->id))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('conversation.messages.0.html', null)
+            ->where('conversation.messages.1.html', "<p>Here you go:</p>\n<ol>\n<li><strong>Hack</strong>: <a href=\"https://www.bbc.com/news\">BBC</a></li>\n<li><code>code</code></li>\n</ol>\n")
+        );
+});
+
+test('HTML and script links in assistant replies are not rendered', function () {
+    EstateAssistant::fake(['<img src=x onerror=alert(1)> [click](javascript:alert(1))']);
+    $user = User::factory()->create();
+    $this->actingAs($user)->post(route('chat.messages.store'), ['message' => 'Hi']);
+
+    $this->actingAs($user)
+        ->get(route('chat.show', Conversation::sole()->id))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('conversation.messages.1.html', fn (string $html) => ! str_contains($html, '<img')
+                && str_contains($html, '&lt;img')
+                && ! str_contains($html, 'javascript:'))
+        );
+});
+
 test("users cannot view another user's conversation", function () {
     EstateAssistant::fake(['Secret.']);
     $this->actingAs(User::factory()->create())->post(route('chat.messages.store'), ['message' => 'Secret']);

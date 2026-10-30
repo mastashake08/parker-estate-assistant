@@ -50,6 +50,7 @@ export type ConversationMessage = {
     id: string;
     role: 'user' | 'assistant';
     content: string | null;
+    html: string | null;
     created_at: string;
     tools: ToolUse[];
 };

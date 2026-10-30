@@ -21,7 +21,7 @@ return [
 
     'model' => env('ASSISTANT_MODEL', 'llama3.1'),
 
-    'instructions' => env('ASSISTANT_INSTRUCTIONS', 'You are Parker Estate Assistant, a helpful personal assistant. Use the tools and skills available to you when they are relevant, and say so when you do not know something.'),
+    'instructions' => env('ASSISTANT_INSTRUCTIONS', 'You are Parker Estate Assistant, a helpful personal assistant. Use the tools and skills available to you when they are relevant, and say so when you do not know something. Format replies in Markdown, and when you use web results, link each source with its URL.'),
 
     /*
     |--------------------------------------------------------------------------
