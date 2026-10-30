@@ -2,13 +2,16 @@
 
 namespace App\Services;
 
+use App\Ai\ToolArguments;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Ai\Approvals\PendingApproval;
 use Laravel\Ai\Contracts\ConversationStore;
+use Laravel\Ai\Contracts\ResolvesPendingApprovals;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 
@@ -99,6 +102,28 @@ class ConversationService
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * Get the tool calls the conversation's latest reply is waiting for the user to approve.
+     *
+     * @return list<array{id: string, tool: string, arguments: array<array-key, mixed>, reason: ?string}>
+     */
+    public function approvals(Conversation $conversation): array
+    {
+        if (! $this->store instanceof ResolvesPendingApprovals) {
+            return [];
+        }
+
+        return array_map(
+            fn (PendingApproval $approval) => [
+                'id' => $approval->id,
+                'tool' => $approval->tool,
+                'arguments' => ToolArguments::unwrap($approval->arguments),
+                'reason' => $approval->reason,
+            ],
+            $this->store->pendingApprovalsFor($conversation->id),
+        );
     }
 
     /**

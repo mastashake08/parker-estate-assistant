@@ -7,6 +7,8 @@ use App\Events\AssistantReplyStreamed;
 use App\Jobs\StreamAssistantReply;
 use App\Models\User;
 use Illuminate\Support\Arr;
+use Illuminate\Validation\ValidationException;
+use Laravel\Ai\Approvals\Decisions;
 use Laravel\Ai\Streaming\Events\StreamEvent;
 
 class AssistantService
@@ -42,13 +44,43 @@ class AssistantService
     }
 
     /**
+     * Approve or deny the tool calls the conversation's reply is waiting on, and
+     * queue the rest of the reply.
+     *
+     * Every waiting call must be decided at once.
+     *
+     * @param  array<string, bool>  $decisions  Whether each waiting call is approved, keyed by its ID.
+     *
+     * @throws ValidationException
+     */
+    public function decide(User $user, string $conversationId, array $decisions): void
+    {
+        $conversation = $this->conversations->find($user, $conversationId);
+
+        $waiting = array_column($this->conversations->approvals($conversation), 'id');
+
+        if (collect($waiting)->sort()->values()->all() !== collect(array_keys($decisions))->map(fn ($id) => (string) $id)->sort()->values()->all()) {
+            throw ValidationException::withMessages([
+                'decisions' => __('Approve or deny each request that is waiting for approval.'),
+            ]);
+        }
+
+        StreamAssistantReply::dispatch($user, $conversation->id, $decisions);
+    }
+
+    /**
      * Prompt the assistant and broadcast each streamed event as it arrives.
      *
      * The conversation is remembered once the stream completes, so the next
      * message in it gives the model this exchange as context. A final
      * "reply_complete" event tells the chat the exchange has been stored.
+     *
+     * The input is the user's message, or their decisions on the tool calls a
+     * paused reply is waiting on, which resume it.
+     *
+     * @param  string|array<string, bool>  $input
      */
-    public function stream(User $user, string $conversationId, string $message): void
+    public function stream(User $user, string $conversationId, string|array $input): void
     {
         $agent = new EstateAssistant(
             tools: $this->tools->enabledTools($user),
@@ -58,7 +90,7 @@ class AssistantService
         $agent
             ->continue($conversationId, as: $user)
             ->stream(
-                $message,
+                is_array($input) ? Decisions::from($input) : $input,
                 provider: config('assistant.provider'),
                 model: $this->conversations->find($user, $conversationId)->model ?? config('assistant.model'),
             )

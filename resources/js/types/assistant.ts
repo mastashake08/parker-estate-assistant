@@ -61,9 +61,17 @@ export type ConversationMessage = {
     tools: ToolUse[];
 };
 
+export type PendingApproval = {
+    id: string;
+    tool: string;
+    arguments: Record<string, unknown>;
+    reason: string | null;
+};
+
 export type Conversation = {
     id: string;
     title: string;
     model: string | null;
     messages: ConversationMessage[];
+    approvals: PendingApproval[];
 };

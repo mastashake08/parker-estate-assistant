@@ -40,6 +40,7 @@ class ConversationController extends Controller
             'conversation' => [
                 ...$found->only(['id', 'title', 'model']),
                 'messages' => $this->conversations->messages($found),
+                'approvals' => $this->conversations->approvals($found),
             ],
         ]);
     }

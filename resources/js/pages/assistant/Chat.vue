@@ -4,6 +4,7 @@ import { Plus, Trash2, Wrench } from '@lucide/vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import ConversationController from '@/actions/App/Http/Controllers/Assistant/ConversationController';
 import ConversationMessageController from '@/actions/App/Http/Controllers/Assistant/ConversationMessageController';
+import ApprovalRequests from '@/components/ApprovalRequests.vue';
 import InputError from '@/components/InputError.vue';
 import ToolUsage from '@/components/ToolUsage.vue';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,9 @@ const pendingMessage = computed(
     () => page.flash.pendingMessage as string | undefined,
 );
 
+/** Set after approving or denying tool calls, while the rest of the reply streams. */
+const resumingReply = computed(() => page.flash.resumingReply === true);
+
 const stream = computed(() =>
     props.conversation ? streams[props.conversation.id] : undefined,
 );
@@ -52,7 +56,9 @@ watch(
 );
 
 const awaitingReply = computed(
-    () => !!pendingMessage.value && stream.value?.status !== 'error',
+    () =>
+        (!!pendingMessage.value || resumingReply.value) &&
+        stream.value?.status !== 'error',
 );
 
 // Once the reply has been stored, load it from the server and drop the live copy.
@@ -208,8 +214,14 @@ const deleteConversation = (id: string) => {
                     </div>
                 </div>
 
-                <template v-if="pendingMessage">
-                    <div class="flex justify-end">
+                <ApprovalRequests
+                    v-if="conversation?.approvals.length && !awaitingReply"
+                    :conversation-id="conversation.id"
+                    :approvals="conversation.approvals"
+                />
+
+                <template v-if="pendingMessage || resumingReply">
+                    <div v-if="pendingMessage" class="flex justify-end">
                         <div
                             class="max-w-[80%] rounded-lg bg-primary px-4 py-2 text-sm whitespace-pre-wrap text-primary-foreground"
                         >

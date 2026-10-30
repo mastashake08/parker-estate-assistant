@@ -25,11 +25,13 @@ class StreamAssistantReply implements ShouldQueue
 
     /**
      * Create a new job instance.
+     *
+     * @param  string|array<string, bool>  $input  The user's message, or their approval decisions keyed by tool call ID.
      */
     public function __construct(
         public User $user,
         public string $conversationId,
-        public string $message,
+        public string|array $input,
     ) {}
 
     /**
@@ -37,7 +39,7 @@ class StreamAssistantReply implements ShouldQueue
      */
     public function handle(AssistantService $assistant): void
     {
-        $assistant->stream($this->user, $this->conversationId, $this->message);
+        $assistant->stream($this->user, $this->conversationId, $this->input);
     }
 
     /**
