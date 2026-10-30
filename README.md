@@ -83,6 +83,17 @@ Sending a message queues a `StreamAssistantReply` job and redirects straight bac
 
 This needs both a **queue worker** and the **Reverb server** running. `composer run dev` starts both. Without a worker, messages are accepted but no reply ever arrives. Reverb listens on port 8080, which `compose.yaml` publishes from the app container.
 
+### Using it from other devices on your network
+
+The app container publishes port 80 on every interface, so other devices can open `http://<this machine's address>` (on a Mac, `ipconfig getifaddr en0` prints it). Two addresses are baked into the pages and must point at this machine instead of `localhost`:
+
+```dotenv
+VITE_REVERB_HOST=192.168.0.60   # live replies; keep REVERB_HOST="localhost" for the server side
+VITE_HMR_HOST=192.168.0.60      # only needed while the Vite dev server runs
+```
+
+Rebuild the assets (`vendor/bin/sail npm run build`) or restart `composer run dev` after changing them. Anyone on the network can then register and add local MCP servers, which run commands on this machine, so set `ASSISTANT_MCP_STDIO=false` unless you trust everyone on it.
+
 ### Documents
 
 The text is read when you upload: PDFs with `smalot/pdfparser`, Word files from their XML, and everything else as plain text. Scanned PDFs (pictures of text) have no text to read and are rejected. Files are kept on the private `local` disk and deleted with their conversation.
