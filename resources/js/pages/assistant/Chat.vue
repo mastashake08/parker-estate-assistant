@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { FileText, Paperclip, Plus, Trash2, Wrench, X } from '@lucide/vue';
+import {
+    FileText,
+    Paperclip,
+    Plus,
+    Square,
+    Trash2,
+    Volume2,
+    VolumeX,
+    Wrench,
+    X,
+} from '@lucide/vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import ConversationController from '@/actions/App/Http/Controllers/Assistant/ConversationController';
 import ConversationMessageController from '@/actions/App/Http/Controllers/Assistant/ConversationMessageController';
@@ -10,8 +20,13 @@ import ToolUsage from '@/components/ToolUsage.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useAssistantStream } from '@/composables/useAssistantStream';
+import { textFromHtml, useSpeech } from '@/composables/useSpeech';
 import { index as chatIndex, show as chatShow } from '@/routes/chat';
-import type { Conversation, ConversationSummary } from '@/types';
+import type {
+    Conversation,
+    ConversationMessage,
+    ConversationSummary,
+} from '@/types';
 
 const props = defineProps<{
     conversations: ConversationSummary[];
@@ -28,6 +43,20 @@ defineOptions({
 
 const page = usePage();
 const { streams, clear } = useAssistantStream();
+const speech = useSpeech();
+
+/** The text of a reply as it should be read aloud. */
+const spokenText = (message: ConversationMessage) =>
+    message.html ? textFromHtml(message.html) : (message.content ?? '');
+
+/** Read the newest reply aloud when automatic reading is on. */
+const readLatestReply = () => {
+    const latest = props.conversation?.messages.at(-1);
+
+    if (speech.settings.value.autoRead && latest?.role === 'assistant') {
+        speech.speak(latest.id, spokenText(latest));
+    }
+};
 
 /** The message just sent, shown until the finished exchange has been stored. */
 const pendingMessage = computed(
@@ -99,7 +128,10 @@ watch(
         if (status === 'complete' && id) {
             router.reload({
                 only: ['conversation', 'conversations'],
-                onSuccess: () => clear(id),
+                onSuccess: () => {
+                    clear(id);
+                    readLatestReply();
+                },
             });
         }
     },
@@ -123,6 +155,14 @@ watch(
     ],
     scrollToLatest,
 );
+
+const toggleAutoRead = () => {
+    speech.settings.value.autoRead = !speech.settings.value.autoRead;
+
+    if (!speech.settings.value.autoRead) {
+        speech.stop();
+    }
+};
 
 const deleteConversation = (id: string) => {
     if (confirm('Delete this conversation? The assistant will forget it.')) {
@@ -258,6 +298,31 @@ const deleteConversation = (id: string) => {
                                 </li>
                             </ol>
                         </div>
+                        <button
+                            v-if="
+                                speech.isSupported &&
+                                message.role === 'assistant' &&
+                                message.content
+                            "
+                            type="button"
+                            class="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                            :aria-label="
+                                speech.speakingId.value === message.id
+                                    ? 'Stop reading'
+                                    : 'Read aloud'
+                            "
+                            @click="
+                                speech.toggle(message.id, spokenText(message))
+                            "
+                        >
+                            <template
+                                v-if="speech.speakingId.value === message.id"
+                                ><Square class="h-3 w-3" /> Stop</template
+                            >
+                            <template v-else
+                                ><Volume2 class="h-3 w-3" /> Listen</template
+                            >
+                        </button>
                     </div>
                 </div>
 
@@ -314,6 +379,7 @@ const deleteConversation = (id: string) => {
                 :reset-on-success="['message']"
                 class="border-t p-4"
                 v-slot="{ errors, processing }"
+                @before="speech.unlock()"
                 @success="clearDocuments"
             >
                 <div
@@ -376,6 +442,31 @@ const deleteConversation = (id: string) => {
                             ).form?.requestSubmit()
                         "
                     />
+                    <Button
+                        v-if="speech.isSupported"
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        class="self-end"
+                        :aria-pressed="speech.settings.value.autoRead"
+                        :aria-label="
+                            speech.settings.value.autoRead
+                                ? 'Stop reading replies aloud'
+                                : 'Read replies aloud'
+                        "
+                        :title="
+                            speech.settings.value.autoRead
+                                ? 'Reading replies aloud'
+                                : 'Read replies aloud'
+                        "
+                        @click="toggleAutoRead"
+                    >
+                        <Volume2
+                            v-if="speech.settings.value.autoRead"
+                            class="h-4 w-4"
+                        />
+                        <VolumeX v-else class="h-4 w-4" />
+                    </Button>
                     <select
                         v-if="models.length"
                         v-model="model"
