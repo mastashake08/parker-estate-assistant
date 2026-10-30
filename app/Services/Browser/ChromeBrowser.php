@@ -64,7 +64,7 @@ class ChromeBrowser implements Browser
         $options = ['sendSyncDefaultTimeout' => $this->timeout * 1000];
 
         if (filled($this->endpoint)) {
-            return BrowserFactory::connectToBrowser($this->endpoint, $options);
+            return BrowserFactory::connectToBrowser($this->endpointUri((string) $this->endpoint), $options);
         }
 
         return (new BrowserFactory(filled($this->binary) ? $this->binary : null))->createBrowser([
@@ -73,6 +73,14 @@ class ChromeBrowser implements Browser
             'noSandbox' => true,
             'startupTimeout' => $this->timeout,
         ]);
+    }
+
+    /**
+     * The WebSocket client needs a path, so "ws://chrome:3000" becomes "ws://chrome:3000/".
+     */
+    protected function endpointUri(string $endpoint): string
+    {
+        return parse_url($endpoint, PHP_URL_PATH) ? $endpoint : preg_replace('#^([a-z]+://[^/?]+)#i', '$1/', $endpoint);
     }
 
     /**
