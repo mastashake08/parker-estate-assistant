@@ -4,11 +4,16 @@ use App\Ai\Agents\EstateAssistant;
 use App\Events\AssistantReplyStreamed;
 use App\Jobs\StreamAssistantReply;
 use App\Models\User;
+use App\Services\Browser\Browser;
+use App\Services\Browser\RenderedPage;
 use App\Services\ConversationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Ai\Models\Conversation;
+use Laravel\Ai\Responses\Data\ToolCall;
+
+use function Pest\Laravel\mock;
 
 uses(RefreshDatabase::class);
 
@@ -113,6 +118,27 @@ test('the chat is told the reply is complete only after the exchange is stored',
     StreamAssistantReply::dispatchSync($user, $conversationId, 'Hello');
 
     expect($storedWhenComplete)->toBe(2);
+});
+
+test('tool results are broadcast without their output so large pages fit in a broadcast', function () {
+    mock(Browser::class)
+        ->shouldReceive('render')
+        ->andReturn(new RenderedPage('https://1.1.1.1/', 'Long', '', str_repeat('a', 20_000)));
+    EstateAssistant::fake([new ToolCall('call_1', 'WebFetch', ['url' => 'https://1.1.1.1/']), 'Read it.']);
+    $user = User::factory()->create();
+    $conversationId = app(ConversationService::class)->start($user, 'Read this page');
+
+    Event::fake([AssistantReplyStreamed::class]);
+
+    StreamAssistantReply::dispatchSync($user, $conversationId, 'Read this page');
+
+    Event::assertDispatched(AssistantReplyStreamed::class, fn (AssistantReplyStreamed $event) => $event->event['type'] === 'tool_result'
+        && $event->event['tool_name'] === 'WebFetch'
+        && ! array_key_exists('result', $event->event));
+
+    Event::dispatched(AssistantReplyStreamed::class)->each(
+        fn (array $arguments) => expect(strlen(json_encode($arguments[0]->broadcastWith())))->toBeLessThan(10_000)
+    );
 });
 
 test('a failed reply broadcasts an error so the chat stops waiting', function () {

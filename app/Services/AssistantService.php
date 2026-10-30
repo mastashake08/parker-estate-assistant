@@ -6,6 +6,7 @@ use App\Ai\Agents\EstateAssistant;
 use App\Events\AssistantReplyStreamed;
 use App\Jobs\StreamAssistantReply;
 use App\Models\User;
+use Illuminate\Support\Arr;
 use Laravel\Ai\Streaming\Events\StreamEvent;
 
 class AssistantService
@@ -54,8 +55,21 @@ class AssistantService
                 provider: config('assistant.provider'),
                 model: config('assistant.model'),
             )
-            ->each(fn (StreamEvent $event) => AssistantReplyStreamed::dispatch($user, $conversationId, $event->toArray()));
+            ->each(fn (StreamEvent $event) => AssistantReplyStreamed::dispatch($user, $conversationId, $this->broadcastable($event)));
 
         AssistantReplyStreamed::dispatch($user, $conversationId, ['type' => 'reply_complete']);
+    }
+
+    /**
+     * Convert a stream event to the payload sent to the browser.
+     *
+     * Tool output (a whole web page, for example) can be far larger than a
+     * broadcast may be, so it is left out. The stored conversation keeps it.
+     *
+     * @return array<string, mixed>
+     */
+    protected function broadcastable(StreamEvent $event): array
+    {
+        return Arr::except($event->toArray(), ['result']);
     }
 }
