@@ -72,9 +72,9 @@ class ConversationService
 
     /**
      * Get a conversation's messages in the order they were sent, with the tools
-     * the assistant used for each reply.
+     * the assistant used for each reply and the reply rendered from Markdown.
      *
-     * @return array<int, array{id: string, role: string, content: ?string, created_at: mixed, tools: array<int, array{name: mixed, arguments: mixed, result: string, failed: bool}>}>
+     * @return array<int, array{id: string, role: string, content: ?string, html: ?string, created_at: mixed, tools: array<int, array{name: mixed, arguments: mixed, result: string, failed: bool}>}>
      */
     public function messages(Conversation $conversation): array
     {
@@ -84,6 +84,7 @@ class ConversationService
             ->get(['id', 'conversation_id', 'role', 'content', 'steps', 'created_at'])
             ->map(fn (ConversationMessage $message) => [
                 ...$message->only(['id', 'role', 'content', 'created_at']),
+                'html' => $message->role === 'assistant' && filled($message->content) ? $this->markdown($message->content) : null,
                 'tools' => array_map(fn (array $tool) => [
                     'name' => $tool['name'],
                     'arguments' => $tool['arguments'],
@@ -104,6 +105,20 @@ class ConversationService
             $conversation->messages()->delete();
             $conversation->delete();
         });
+    }
+
+    /**
+     * Render the assistant's Markdown as HTML that is safe to show.
+     *
+     * HTML the model writes is escaped rather than rendered, and links that
+     * could run script (javascript:, data:, ...) are removed.
+     */
+    protected function markdown(string $content): string
+    {
+        return Str::markdown($content, [
+            'html_input' => 'escape',
+            'allow_unsafe_links' => false,
+        ]);
     }
 
     /**

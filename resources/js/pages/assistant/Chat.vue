@@ -165,7 +165,16 @@ const deleteConversation = (id: string) => {
                             :key="index"
                             :tool="tool"
                         />
-                        <p v-if="message.content" class="whitespace-pre-wrap">
+                        <!-- Rendered on the server from Markdown, with any HTML the model wrote escaped. -->
+                        <div
+                            v-if="message.html"
+                            class="markdown"
+                            v-html="message.html"
+                        />
+                        <p
+                            v-else-if="message.content"
+                            class="whitespace-pre-wrap"
+                        >
                             {{ message.content }}
                         </p>
                     </div>
