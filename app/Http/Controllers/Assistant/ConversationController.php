@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Assistant;
 
 use App\Http\Controllers\Controller;
 use App\Services\ConversationService;
+use App\Services\OllamaService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,7 +12,10 @@ use Inertia\Response;
 
 class ConversationController extends Controller
 {
-    public function __construct(protected ConversationService $conversations) {}
+    public function __construct(
+        protected ConversationService $conversations,
+        protected OllamaService $ollama,
+    ) {}
 
     /**
      * Show the chat with the user's conversation history.
@@ -19,7 +23,7 @@ class ConversationController extends Controller
     public function index(Request $request): Response
     {
         return Inertia::render('assistant/Chat', [
-            'conversations' => $this->conversations->list($request->user()),
+            ...$this->chatProps($request),
             'conversation' => null,
         ]);
     }
@@ -32,9 +36,9 @@ class ConversationController extends Controller
         $found = $this->conversations->find($request->user(), $conversation);
 
         return Inertia::render('assistant/Chat', [
-            'conversations' => $this->conversations->list($request->user()),
+            ...$this->chatProps($request),
             'conversation' => [
-                ...$found->only(['id', 'title']),
+                ...$found->only(['id', 'title', 'model']),
                 'messages' => $this->conversations->messages($found),
             ],
         ]);
@@ -50,5 +54,19 @@ class ConversationController extends Controller
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Conversation deleted.')]);
 
         return to_route('chat.index');
+    }
+
+    /**
+     * The props every chat page needs: the conversation list and the models to choose from.
+     *
+     * @return array<string, mixed>
+     */
+    protected function chatProps(Request $request): array
+    {
+        return [
+            'conversations' => $this->conversations->list($request->user()),
+            'models' => $this->ollama->installedModels(),
+            'defaultModel' => config('assistant.model'),
+        ];
     }
 }

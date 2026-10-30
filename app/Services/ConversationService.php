@@ -37,13 +37,27 @@ class ConversationService
     /**
      * Start a new conversation for the user, titled after their first message.
      */
-    public function start(User $user, string $firstMessage): string
+    public function start(User $user, string $firstMessage, ?string $model = null): string
     {
-        return $this->store->storeConversation(
+        $conversationId = $this->store->storeConversation(
             Conversation::participantType($user),
             Conversation::participantKey($user),
             Str::limit(Str::squish($firstMessage), 50, preserveWords: true),
         );
+
+        if ($model !== null) {
+            $this->setModel($conversationId, $model);
+        }
+
+        return $conversationId;
+    }
+
+    /**
+     * Choose the model that replies in a conversation.
+     */
+    public function setModel(string $conversationId, string $model): void
+    {
+        Conversation::query()->whereKey($conversationId)->update(['model' => $model]);
     }
 
     /**

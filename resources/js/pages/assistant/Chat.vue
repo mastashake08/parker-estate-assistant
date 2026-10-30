@@ -15,6 +15,8 @@ import type { Conversation, ConversationSummary } from '@/types';
 const props = defineProps<{
     conversations: ConversationSummary[];
     conversation: Conversation | null;
+    models: string[];
+    defaultModel: string;
 }>();
 
 defineOptions({
@@ -33,6 +35,20 @@ const pendingMessage = computed(
 
 const stream = computed(() =>
     props.conversation ? streams[props.conversation.id] : undefined,
+);
+
+/** The conversation's model, else the default if it is installed, else the first installed model. */
+const initialModel = () =>
+    props.conversation?.model ??
+    (props.models.includes(props.defaultModel)
+        ? props.defaultModel
+        : (props.models[0] ?? ''));
+
+const model = ref(initialModel());
+
+watch(
+    () => props.conversation?.id,
+    () => (model.value = initialModel()),
 );
 
 const awaitingReply = computed(
@@ -192,7 +208,7 @@ const deleteConversation = (id: string) => {
 
             <Form
                 v-bind="ConversationMessageController.store.form()"
-                reset-on-success
+                :reset-on-success="['message']"
                 class="border-t p-4"
                 v-slot="{ errors, processing }"
             >
@@ -215,8 +231,24 @@ const deleteConversation = (id: string) => {
                             ).form?.requestSubmit()
                         "
                     />
+                    <select
+                        v-if="models.length"
+                        v-model="model"
+                        name="model"
+                        aria-label="Model"
+                        class="h-9 max-w-40 self-end rounded-md border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+                    >
+                        <option
+                            v-for="name in models"
+                            :key="name"
+                            :value="name"
+                        >
+                            {{ name }}
+                        </option>
+                    </select>
                     <Button
                         type="submit"
+                        class="self-end"
                         :disabled="processing || awaitingReply"
                     >
                         <Spinner v-if="processing || awaitingReply" />
@@ -224,6 +256,7 @@ const deleteConversation = (id: string) => {
                     </Button>
                 </div>
                 <InputError class="mt-2" :message="errors.message" />
+                <InputError class="mt-2" :message="errors.model" />
             </Form>
         </section>
     </div>

@@ -11,6 +11,7 @@ use App\Services\Browser\Browser;
 use App\Services\Browser\RenderedPage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Ai\Events\StreamingAgent;
 use Laravel\Ai\Models\Conversation;
@@ -26,6 +27,8 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     config(['ai.conversations.generate_title' => false]);
+
+    Http::fake(['*/api/tags' => Http::response(['models' => []])]);
 });
 
 test('guests are redirected to the login page', function () {
