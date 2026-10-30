@@ -48,7 +48,12 @@ const edit = (skill: Skill) => {
 
 const cancel = () => {
     editing.value = null;
-    form.defaults({ name: '', description: '', instructions: '', enabled: true });
+    form.defaults({
+        name: '',
+        description: '',
+        instructions: '',
+        enabled: true,
+    });
     form.reset();
 };
 
@@ -64,7 +69,9 @@ const submit = () => {
 
 const remove = (skill: Skill) => {
     if (confirm(`Delete the ${skill.name} skill?`)) {
-        router.delete(SkillController.destroy.url(skill.id), { preserveScroll: true });
+        router.delete(SkillController.destroy.url(skill.id), {
+            preserveScroll: true,
+        });
     }
 };
 </script>
@@ -89,30 +96,53 @@ const remove = (skill: Skill) => {
                 class="flex items-start justify-between gap-4 rounded-lg border p-4"
             >
                 <div class="min-w-0">
-                    <div class="flex items-center gap-2 font-mono text-sm font-medium">
+                    <div
+                        class="flex items-center gap-2 font-mono text-sm font-medium"
+                    >
                         {{ skill.name }}
-                        <Badge v-if="!skill.enabled" variant="outline">disabled</Badge>
+                        <Badge v-if="!skill.enabled" variant="outline"
+                            >disabled</Badge
+                        >
                     </div>
-                    <p class="text-sm text-muted-foreground">{{ skill.description }}</p>
+                    <p class="text-sm text-muted-foreground">
+                        {{ skill.description }}
+                    </p>
                 </div>
                 <div class="flex shrink-0 gap-2">
-                    <Button variant="outline" size="sm" @click="edit(skill)">Edit</Button>
-                    <Button variant="destructive" size="sm" @click="remove(skill)">Delete</Button>
+                    <Button variant="outline" size="sm" @click="edit(skill)"
+                        >Edit</Button
+                    >
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        @click="remove(skill)"
+                        >Delete</Button
+                    >
                 </div>
             </div>
         </div>
 
         <form class="space-y-4 rounded-lg border p-4" @submit.prevent="submit">
-            <Heading variant="small" :title="editing ? `Edit ${editing.name}` : 'Add a skill'" />
+            <Heading
+                variant="small"
+                :title="editing ? `Edit ${editing.name}` : 'Add a skill'"
+            />
 
             <div class="grid gap-2">
                 <Label for="name">Name</Label>
-                <Input id="name" v-model="form.name" required placeholder="property-taxes" />
+                <Input
+                    id="name"
+                    v-model="form.name"
+                    required
+                    placeholder="property-taxes"
+                />
                 <InputError :message="form.errors.name" />
             </div>
 
             <div class="grid gap-2">
-                <Label for="description">When should the assistant use it?</Label>
+                <Label for="description"
+                    >When should the assistant use it?</Label
+                >
                 <Input
                     id="description"
                     v-model="form.description"
@@ -146,7 +176,13 @@ const remove = (skill: Skill) => {
                 <Button type="submit" :disabled="form.processing">
                     {{ editing ? 'Save' : 'Add skill' }}
                 </Button>
-                <Button v-if="editing" type="button" variant="ghost" @click="cancel">Cancel</Button>
+                <Button
+                    v-if="editing"
+                    type="button"
+                    variant="ghost"
+                    @click="cancel"
+                    >Cancel</Button
+                >
             </div>
         </form>
     </div>

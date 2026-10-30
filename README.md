@@ -7,11 +7,12 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 ## Features
 
 - **Chat with memory**: every conversation is stored, and the model is sent the earlier messages each time you continue one.
+- **Live replies**: replies are generated on a queue and streamed to the browser token by token over [Laravel Reverb](https://reverb.laravel.com) WebSockets, including which tools the assistant used.
 - **MCP servers**: connect local (stdio) or remote (HTTP) MCP servers. Their tools become available to the assistant automatically. Environment variables and headers are encrypted at rest.
 - **Tools**: switch any built-in or MCP tool on or off. Built-in tools:
-  - `web_search`: searches DuckDuckGo in headless Chrome and returns titles, URLs and snippets.
-  - `web_fetch`: opens a page in headless Chrome (so JavaScript-rendered content works) and returns its text. It only reaches public addresses.
-  - `current_date_time`: the current date and time in any timezone.
+    - `web_search`: searches DuckDuckGo in headless Chrome and returns titles, URLs and snippets.
+    - `web_fetch`: opens a page in headless Chrome (so JavaScript-rendered content works) and returns its text. It only reaches public addresses.
+    - `current_date_time`: the current date and time in any timezone.
 - **Skills**: named instructions the assistant loads on demand when a task matches the skill's description.
 
 ## Requirements
@@ -28,7 +29,8 @@ vendor/bin/sail up -d
 vendor/bin/sail artisan key:generate
 vendor/bin/sail artisan migrate
 vendor/bin/sail npm install
-vendor/bin/sail npm run dev
+vendor/bin/sail artisan reverb:install   # generates REVERB_APP_* keys in .env
+vendor/bin/sail composer run dev         # Vite, the queue worker and Reverb
 ```
 
 Pull a model and point the app at it:
@@ -45,27 +47,33 @@ Register an account, then open **Chat** from the sidebar.
 
 Most settings live in [`config/assistant.php`](config/assistant.php) and can be set from `.env`:
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `AI_PROVIDER` | `ollama` | Provider from `config/ai.php` |
-| `OLLAMA_URL` | `http://host.docker.internal:11434` | Where Ollama is listening (from inside Sail) |
-| `ASSISTANT_MODEL` | `llama3.1` | The model the assistant talks to |
-| `ASSISTANT_INSTRUCTIONS` | (built in) | The system prompt |
-| `ASSISTANT_MEMORY_MESSAGES` | `50` | Earlier messages sent back with each prompt |
-| `ASSISTANT_MCP_STDIO` | `true` | Allow local (stdio) MCP servers |
-| `ASSISTANT_MCP_TIMEOUT` | `30` | Seconds to wait for an MCP server |
-| `BROWSER_ENDPOINT` | `ws://chrome:3000` | Remote headless Chrome; leave empty to launch a local Chrome |
-| `BROWSER_CHROME_BINARY` | (auto-detected) | Path to Chrome when launching locally |
-| `BROWSER_TIMEOUT` | `30` | Seconds to wait for a page to load |
-| `WEB_SEARCH_URL` | DuckDuckGo HTML | Search URL; `%s` is replaced with the query |
-| `WEB_SEARCH_RESULTS` | `5` | Default number of search results (max 10) |
-| `WEB_FETCH_MAX_CHARACTERS` | `20000` | Page text is truncated after this many characters |
+| Variable                    | Default                             | Purpose                                                      |
+| --------------------------- | ----------------------------------- | ------------------------------------------------------------ |
+| `AI_PROVIDER`               | `ollama`                            | Provider from `config/ai.php`                                |
+| `OLLAMA_URL`                | `http://host.docker.internal:11434` | Where Ollama is listening (from inside Sail)                 |
+| `ASSISTANT_MODEL`           | `llama3.1`                          | The model the assistant talks to                             |
+| `ASSISTANT_INSTRUCTIONS`    | (built in)                          | The system prompt                                            |
+| `ASSISTANT_MEMORY_MESSAGES` | `50`                                | Earlier messages sent back with each prompt                  |
+| `ASSISTANT_MCP_STDIO`       | `true`                              | Allow local (stdio) MCP servers                              |
+| `ASSISTANT_MCP_TIMEOUT`     | `30`                                | Seconds to wait for an MCP server                            |
+| `BROWSER_ENDPOINT`          | `ws://chrome:3000`                  | Remote headless Chrome; leave empty to launch a local Chrome |
+| `BROWSER_CHROME_BINARY`     | (auto-detected)                     | Path to Chrome when launching locally                        |
+| `BROWSER_TIMEOUT`           | `30`                                | Seconds to wait for a page to load                           |
+| `WEB_SEARCH_URL`            | DuckDuckGo HTML                     | Search URL; `%s` is replaced with the query                  |
+| `WEB_SEARCH_RESULTS`        | `5`                                 | Default number of search results (max 10)                    |
+| `WEB_FETCH_MAX_CHARACTERS`  | `20000`                             | Page text is truncated after this many characters            |
 
 > Don't set `CHROME_PATH` in `.env`. The Chrome library reads it directly, even when it's empty. Use `BROWSER_CHROME_BINARY` instead.
 
 ### Headless browser
 
 Under Sail, the `chrome` service in [`compose.yaml`](compose.yaml) runs [browserless/chromium](https://github.com/browserless/browserless) and the app connects to it at `ws://chrome:3000`. Outside Docker (for example with Herd), set `BROWSER_ENDPOINT=` and the Chrome installed on the machine is launched instead.
+
+### Live replies (Reverb)
+
+Sending a message queues a `StreamAssistantReply` job and redirects straight back to the chat. The job streams the reply from the model and broadcasts each piece as an `assistant.stream` event on the user's private `App.Models.User.{id}` channel. It finishes with a `reply_complete` event, sent once the exchange has been saved, and the chat page then reloads the stored messages.
+
+This needs both a **queue worker** and the **Reverb server** running. `composer run dev` starts both. Without a worker, messages are accepted but no reply ever arrives. Reverb listens on port 8080, which `compose.yaml` publishes from the app container.
 
 ## Security notes
 
@@ -82,10 +90,12 @@ app/
 ├── Ai/
 │   ├── Agents/EstateAssistant.php   # The agent: instructions, tools, skills, conversation memory
 │   └── Tools/                       # Built-in tools (CurrentDateTime, WebSearch, WebFetch)
+├── Events/AssistantReplyStreamed.php  # Broadcasts each streamed event to the user's channel
+├── Jobs/StreamAssistantReply.php      # Runs one reply on the queue
 ├── Http/Controllers/Assistant/      # Chat, MCP servers, tools, skills
 ├── Models/                          # McpServer, Skill, DisabledTool
 └── Services/
-    ├── AssistantService.php         # Builds the agent for a user and sends a message
+    ├── AssistantService.php         # Queues a reply; builds the agent and streams the reply
     ├── ConversationService.php      # Lists, shows and deletes a user's conversations
     ├── McpServerService.php         # MCP server CRUD and tool discovery
     ├── SkillService.php             # Skill CRUD; converts skills for the agent

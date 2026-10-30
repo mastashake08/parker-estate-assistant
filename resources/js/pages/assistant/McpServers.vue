@@ -49,7 +49,10 @@ const parsePairs = (text: string, separator: string): Record<string, string> =>
             .map((line) => {
                 const at = line.indexOf(separator);
 
-                return [line.slice(0, at).trim(), line.slice(at + separator.length).trim()];
+                return [
+                    line.slice(0, at).trim(),
+                    line.slice(at + separator.length).trim(),
+                ];
             }),
     );
 
@@ -61,7 +64,10 @@ const payload = (data: typeof form.data extends () => infer T ? T : never) => {
         name: data.name,
         transport: data.transport,
         command: data.command || null,
-        args: data.args.split('\n').map((arg) => arg.trim()).filter(Boolean),
+        args: data.args
+            .split('\n')
+            .map((arg) => arg.trim())
+            .filter(Boolean),
         url: data.url || null,
         enabled: data.enabled,
         // Secrets are never sent back to the browser, so only overwrite them when new values are entered.
@@ -88,7 +94,16 @@ const edit = (server: McpServer) => {
 
 const cancel = () => {
     editing.value = null;
-    form.defaults({ name: '', transport: 'stdio', command: '', args: '', env: '', url: '', headers: '', enabled: true });
+    form.defaults({
+        name: '',
+        transport: 'stdio',
+        command: '',
+        args: '',
+        env: '',
+        url: '',
+        headers: '',
+        enabled: true,
+    });
     form.reset();
 };
 
@@ -106,7 +121,9 @@ const submit = () => {
 
 const remove = (server: McpServer) => {
     if (confirm(`Remove ${server.name}?`)) {
-        router.delete(McpServerController.destroy.url(server.id), { preserveScroll: true });
+        router.delete(McpServerController.destroy.url(server.id), {
+            preserveScroll: true,
+        });
     }
 };
 </script>
@@ -133,20 +150,33 @@ const remove = (server: McpServer) => {
                 <div class="min-w-0">
                     <div class="flex items-center gap-2 font-medium">
                         {{ server.name }}
-                        <Badge variant="secondary">{{ server.transport }}</Badge>
-                        <Badge v-if="!server.enabled" variant="outline">disabled</Badge>
+                        <Badge variant="secondary">{{
+                            server.transport
+                        }}</Badge>
+                        <Badge v-if="!server.enabled" variant="outline"
+                            >disabled</Badge
+                        >
                     </div>
                     <p class="truncate font-mono text-xs text-muted-foreground">
                         {{
                             server.transport === 'http'
                                 ? server.url
-                                : [server.command, ...(server.args ?? [])].join(' ')
+                                : [server.command, ...(server.args ?? [])].join(
+                                      ' ',
+                                  )
                         }}
                     </p>
                 </div>
                 <div class="flex shrink-0 gap-2">
-                    <Button variant="outline" size="sm" @click="edit(server)">Edit</Button>
-                    <Button variant="destructive" size="sm" @click="remove(server)">Remove</Button>
+                    <Button variant="outline" size="sm" @click="edit(server)"
+                        >Edit</Button
+                    >
+                    <Button
+                        variant="destructive"
+                        size="sm"
+                        @click="remove(server)"
+                        >Remove</Button
+                    >
                 </div>
             </div>
         </div>
@@ -159,7 +189,12 @@ const remove = (server: McpServer) => {
 
             <div class="grid gap-2">
                 <Label for="name">Name</Label>
-                <Input id="name" v-model="form.name" required placeholder="filesystem" />
+                <Input
+                    id="name"
+                    v-model="form.name"
+                    required
+                    placeholder="filesystem"
+                />
                 <InputError :message="form.errors.name" />
             </div>
 
@@ -170,7 +205,9 @@ const remove = (server: McpServer) => {
                     v-model="form.transport"
                     class="h-9 rounded-md border border-input bg-transparent px-3 text-sm dark:bg-input/30"
                 >
-                    <option value="stdio" :disabled="!stdioEnabled">Local command (stdio)</option>
+                    <option value="stdio" :disabled="!stdioEnabled">
+                        Local command (stdio)
+                    </option>
                     <option value="http">Remote (HTTP)</option>
                 </select>
                 <InputError :message="form.errors.transport" />
@@ -179,12 +216,21 @@ const remove = (server: McpServer) => {
             <template v-if="form.transport === 'stdio'">
                 <div class="grid gap-2">
                     <Label for="command">Command</Label>
-                    <Input id="command" v-model="form.command" placeholder="npx" />
+                    <Input
+                        id="command"
+                        v-model="form.command"
+                        placeholder="npx"
+                    />
                     <InputError :message="form.errors.command" />
                 </div>
                 <div class="grid gap-2">
                     <Label for="args">Arguments (one per line)</Label>
-                    <textarea id="args" v-model="form.args" rows="3" :class="textareaClass" />
+                    <textarea
+                        id="args"
+                        v-model="form.args"
+                        rows="3"
+                        :class="textareaClass"
+                    />
                     <InputError :message="form.errors.args" />
                 </div>
                 <div class="grid gap-2">
@@ -194,7 +240,11 @@ const remove = (server: McpServer) => {
                         v-model="form.env"
                         rows="2"
                         :class="textareaClass"
-                        :placeholder="editing ? 'Leave blank to keep the saved values' : ''"
+                        :placeholder="
+                            editing
+                                ? 'Leave blank to keep the saved values'
+                                : ''
+                        "
                     />
                     <InputError :message="form.errors.env" />
                 </div>
@@ -203,7 +253,12 @@ const remove = (server: McpServer) => {
             <template v-else>
                 <div class="grid gap-2">
                     <Label for="url">URL</Label>
-                    <Input id="url" v-model="form.url" type="url" placeholder="https://example.com/mcp" />
+                    <Input
+                        id="url"
+                        v-model="form.url"
+                        type="url"
+                        placeholder="https://example.com/mcp"
+                    />
                     <InputError :message="form.errors.url" />
                 </div>
                 <div class="grid gap-2">
@@ -213,7 +268,11 @@ const remove = (server: McpServer) => {
                         v-model="form.headers"
                         rows="2"
                         :class="textareaClass"
-                        :placeholder="editing ? 'Leave blank to keep the saved values' : 'Authorization: Bearer ...'"
+                        :placeholder="
+                            editing
+                                ? 'Leave blank to keep the saved values'
+                                : 'Authorization: Bearer ...'
+                        "
                     />
                     <InputError :message="form.errors.headers" />
                 </div>
@@ -231,7 +290,13 @@ const remove = (server: McpServer) => {
                 <Button type="submit" :disabled="form.processing">
                     {{ editing ? 'Save' : 'Add server' }}
                 </Button>
-                <Button v-if="editing" type="button" variant="ghost" @click="cancel">Cancel</Button>
+                <Button
+                    v-if="editing"
+                    type="button"
+                    variant="ghost"
+                    @click="cancel"
+                    >Cancel</Button
+                >
             </div>
         </form>
     </div>

@@ -7,11 +7,15 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Laravel\Ai\Contracts\ConversationStore;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Models\ConversationMessage;
 
 class ConversationService
 {
+    public function __construct(protected ConversationStore $store) {}
+
     /**
      * Get the user's conversations, most recently active first.
      *
@@ -23,6 +27,18 @@ class ConversationService
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->get(['id', 'title', 'updated_at']);
+    }
+
+    /**
+     * Start a new conversation for the user, titled after their first message.
+     */
+    public function start(User $user, string $firstMessage): string
+    {
+        return $this->store->storeConversation(
+            Conversation::participantType($user),
+            Conversation::participantKey($user),
+            Str::limit(Str::squish($firstMessage), 50, preserveWords: true),
+        );
     }
 
     /**
