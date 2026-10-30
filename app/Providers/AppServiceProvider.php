@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Browser\Browser;
+use App\Services\Browser\ChromeBrowser;
 use App\Services\Mcp\ClientMcpConnector;
 use App\Services\Mcp\McpConnector;
 use Carbon\CarbonImmutable;
@@ -18,6 +20,13 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(McpConnector::class, ClientMcpConnector::class);
+
+        $this->app->bind(Browser::class, fn () => new ChromeBrowser(
+            endpoint: config('assistant.browser.endpoint'),
+            binary: config('assistant.browser.binary'),
+            timeout: (int) config('assistant.browser.timeout'),
+            userAgent: config('assistant.browser.user_agent'),
+        ));
     }
 
     /**
