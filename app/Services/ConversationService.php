@@ -19,7 +19,10 @@ class ConversationService
      */
     protected const MAX_TOOL_RESULT_CHARACTERS = 2_000;
 
-    public function __construct(protected ConversationStore $store) {}
+    public function __construct(
+        protected ConversationStore $store,
+        protected WebSources $webSources,
+    ) {}
 
     /**
      * Get the user's conversations, most recently active first.
@@ -72,9 +75,10 @@ class ConversationService
 
     /**
      * Get a conversation's messages in the order they were sent, with the tools
-     * the assistant used for each reply and the reply rendered from Markdown.
+     * the assistant used for each reply, the web pages those tools linked to,
+     * and the reply rendered from Markdown.
      *
-     * @return array<int, array{id: string, role: string, content: ?string, html: ?string, created_at: mixed, tools: array<int, array{name: mixed, arguments: mixed, result: string, failed: bool}>}>
+     * @return array<int, array{id: string, role: string, content: ?string, html: ?string, created_at: mixed, sources: list<array{title: string, url: string}>, tools: array<int, array{name: mixed, arguments: mixed, result: string, failed: bool}>}>
      */
     public function messages(Conversation $conversation): array
     {
@@ -85,6 +89,7 @@ class ConversationService
             ->map(fn (ConversationMessage $message) => [
                 ...$message->only(['id', 'role', 'content', 'created_at']),
                 'html' => $message->role === 'assistant' && filled($message->content) ? $this->markdown($message->content) : null,
+                'sources' => $this->sources($message),
                 'tools' => array_map(fn (array $tool) => [
                     'name' => $tool['name'],
                     'arguments' => $tool['arguments'],
@@ -105,6 +110,19 @@ class ConversationService
             $conversation->messages()->delete();
             $conversation->delete();
         });
+    }
+
+    /**
+     * The web pages the reply's tools linked to, without repeats.
+     *
+     * @return list<array{title: string, url: string}>
+     */
+    protected function sources(ConversationMessage $message): array
+    {
+        return array_values(collect($message->tool_results)
+            ->flatMap(fn (array $tool) => $this->webSources->fromToolResult($tool['name'], $this->resultText($tool['result'] ?? '')))
+            ->unique('url')
+            ->all());
     }
 
     /**

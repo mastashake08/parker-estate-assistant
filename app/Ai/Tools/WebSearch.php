@@ -17,7 +17,7 @@ class WebSearch implements Tool
      */
     public function description(): Stringable|string
     {
-        return 'Search the web and get a list of result titles, URLs and snippets. Use it for current events or facts you are unsure of, then read promising results with the web fetch tool.';
+        return 'Search the web and get a list of results, each a Markdown link with a snippet. Use it for current events or facts you are unsure of, then read promising results with the web fetch tool.';
     }
 
     /**

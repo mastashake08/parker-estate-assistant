@@ -37,12 +37,10 @@ test('it renders the search engine results page and returns the results', functi
     expect(search('estate tax & probate'))->toBe(<<<'TEXT'
         Search results for [estate tax & probate]:
 
-        1. Result & 1
-           https://example.com/page-1?a=1
+        1. [Result & 1](https://example.com/page-1?a=1)
            Snippet for result 1.
 
-        2. Result & 2
-           https://example.com/page-2?a=1
+        2. [Result & 2](https://example.com/page-2?a=1)
            Snippet for result 2.
         TEXT);
 });

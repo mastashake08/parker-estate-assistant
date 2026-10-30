@@ -196,9 +196,11 @@ test('a conversation shows the tools the assistant used and what they returned',
             ->where('conversation.messages.1.tools', [[
                 'name' => 'WebFetch',
                 'arguments' => ['url' => 'https://1.1.1.1/'],
-                'result' => "URL: https://1.1.1.1/\nTitle: Hours\n\nOpen 9 to 5.",
+                'result' => "Source: [Hours](https://1.1.1.1/)\n\nOpen 9 to 5.",
                 'failed' => false,
             ]])
+            ->where('conversation.messages.0.sources', [])
+            ->where('conversation.messages.1.sources', [['title' => 'Hours', 'url' => 'https://1.1.1.1/']])
         );
 });
 

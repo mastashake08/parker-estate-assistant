@@ -9,7 +9,10 @@ use Illuminate\Support\Str;
 
 class WebFetchService
 {
-    public function __construct(protected Browser $browser) {}
+    public function __construct(
+        protected Browser $browser,
+        protected WebSources $sources,
+    ) {}
 
     /**
      * Render a public web page and describe it as text for the model.
@@ -30,7 +33,7 @@ class WebFetchService
             return "Refusing to fetch [{$url}]: it redirected to a non-public address.";
         }
 
-        return "URL: {$page->url}\nTitle: {$page->title}\n\n".$this->truncate(trim($page->text));
+        return 'Source: '.$this->sources->link($page->title, $page->url)."\n\n".$this->truncate(trim($page->text));
     }
 
     /**
