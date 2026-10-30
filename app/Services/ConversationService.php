@@ -14,6 +14,11 @@ use Laravel\Ai\Models\ConversationMessage;
 
 class ConversationService
 {
+    /**
+     * The longest tool result shown in the transcript, in characters.
+     */
+    protected const MAX_TOOL_RESULT_CHARACTERS = 2_000;
+
     public function __construct(protected ConversationStore $store) {}
 
     /**
@@ -52,16 +57,28 @@ class ConversationService
     }
 
     /**
-     * Get a conversation's messages in the order they were sent.
+     * Get a conversation's messages in the order they were sent, with the tools
+     * the assistant used for each reply.
      *
-     * @return Collection<int, ConversationMessage>
+     * @return array<int, array{id: string, role: string, content: ?string, created_at: mixed, tools: array<int, array{name: mixed, arguments: mixed, result: string, failed: bool}>}>
      */
-    public function messages(Conversation $conversation): Collection
+    public function messages(Conversation $conversation): array
     {
         return $conversation->messages()
             ->orderBy('created_at')
             ->orderBy('id')
-            ->get(['id', 'conversation_id', 'role', 'content', 'created_at']);
+            ->get(['id', 'conversation_id', 'role', 'content', 'steps', 'created_at'])
+            ->map(fn (ConversationMessage $message) => [
+                ...$message->only(['id', 'role', 'content', 'created_at']),
+                'tools' => array_map(fn (array $tool) => [
+                    'name' => $tool['name'],
+                    'arguments' => $tool['arguments'],
+                    'result' => Str::limit($this->resultText($tool['result'] ?? ''), self::MAX_TOOL_RESULT_CHARACTERS),
+                    'failed' => ($tool['failed'] ?? false) || ($tool['denied'] ?? false),
+                ], $message->tool_results),
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -73,6 +90,14 @@ class ConversationService
             $conversation->messages()->delete();
             $conversation->delete();
         });
+    }
+
+    /**
+     * Convert a stored tool result to text.
+     */
+    protected function resultText(mixed $result): string
+    {
+        return is_string($result) ? $result : (string) json_encode($result, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
     /**

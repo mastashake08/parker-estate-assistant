@@ -7,6 +7,8 @@ use App\Models\DisabledTool;
 use App\Models\McpServer;
 use App\Models\Skill;
 use App\Models\User;
+use App\Services\Browser\Browser;
+use App\Services\Browser\RenderedPage;
 use App\Services\Mcp\McpConnector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -14,6 +16,7 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Ai\Events\StreamingAgent;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\Responses\Data\ToolCall;
 use Laravel\Ai\Skills\Skill as AiSkill;
 use Laravel\Mcp\Client\Primitives\Tool as McpTool;
 use Laravel\Mcp\Exceptions\ClientException;
@@ -174,6 +177,44 @@ test('a conversation can be viewed with its messages', function () {
             ->where('conversation.messages.0.content', 'Hello')
             ->where('conversation.messages.1.role', 'assistant')
             ->where('conversation.messages.1.content', 'Hello back.')
+        );
+});
+
+test('a conversation shows the tools the assistant used and what they returned', function () {
+    mock(Browser::class)
+        ->shouldReceive('render')
+        ->andReturn(new RenderedPage('https://1.1.1.1/', 'Hours', '', 'Open 9 to 5.'));
+    EstateAssistant::fake([new ToolCall('call_1', 'WebFetch', ['url' => 'https://1.1.1.1/']), 'They open at 9.']);
+    $user = User::factory()->create();
+    $this->actingAs($user)->post(route('chat.messages.store'), ['message' => 'When do they open?']);
+    $conversation = Conversation::sole();
+
+    $this->actingAs($user)
+        ->get(route('chat.show', $conversation->id))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('conversation.messages.0.tools', [])
+            ->where('conversation.messages.1.content', 'They open at 9.')
+            ->where('conversation.messages.1.tools', [[
+                'name' => 'WebFetch',
+                'arguments' => ['url' => 'https://1.1.1.1/'],
+                'result' => "URL: https://1.1.1.1/\nTitle: Hours\n\nOpen 9 to 5.",
+                'failed' => false,
+            ]])
+        );
+});
+
+test('long tool results are shortened in the transcript', function () {
+    mock(Browser::class)
+        ->shouldReceive('render')
+        ->andReturn(new RenderedPage('https://1.1.1.1/', 'Long', '', str_repeat('a', 5_000)));
+    EstateAssistant::fake([new ToolCall('call_1', 'WebFetch', ['url' => 'https://1.1.1.1/']), 'Done.']);
+    $user = User::factory()->create();
+    $this->actingAs($user)->post(route('chat.messages.store'), ['message' => 'Read it']);
+
+    $this->actingAs($user)
+        ->get(route('chat.show', Conversation::sole()->id))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('conversation.messages.1.tools.0.result', fn (string $result) => mb_strlen($result) === 2_003 && str_ends_with($result, '...'))
         );
 });
 

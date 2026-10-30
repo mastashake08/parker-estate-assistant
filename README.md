@@ -8,6 +8,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 
 - **Chat with memory**: every conversation is stored, and the model is sent the earlier messages each time you continue one.
 - **Live replies**: replies are generated on a queue and streamed to the browser token by token over [Laravel Reverb](https://reverb.laravel.com) WebSockets, including which tools the assistant used.
+- **Tool transcript**: each reply lists the tools the assistant used. Expand one to see what it was called with and what it returned.
 - **MCP servers**: connect local (stdio) or remote (HTTP) MCP servers. Their tools become available to the assistant automatically. Environment variables and headers are encrypted at rest.
 - **Tools**: switch any built-in or MCP tool on or off. Built-in tools:
     - `web_search`: searches DuckDuckGo in headless Chrome and returns titles, URLs and snippets.

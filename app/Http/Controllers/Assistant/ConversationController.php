@@ -35,8 +35,7 @@ class ConversationController extends Controller
             'conversations' => $this->conversations->list($request->user()),
             'conversation' => [
                 ...$found->only(['id', 'title']),
-                'messages' => $this->conversations->messages($found)
-                    ->map(fn ($message) => $message->only(['id', 'role', 'content', 'created_at'])),
+                'messages' => $this->conversations->messages($found),
             ],
         ]);
     }

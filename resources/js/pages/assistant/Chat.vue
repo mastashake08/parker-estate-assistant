@@ -5,6 +5,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import ConversationController from '@/actions/App/Http/Controllers/Assistant/ConversationController';
 import ConversationMessageController from '@/actions/App/Http/Controllers/Assistant/ConversationMessageController';
 import InputError from '@/components/InputError.vue';
+import ToolUsage from '@/components/ToolUsage.vue';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { useAssistantStream } from '@/composables/useAssistantStream';
@@ -136,14 +137,21 @@ const deleteConversation = (id: string) => {
                     "
                 >
                     <div
-                        class="max-w-[80%] rounded-lg px-4 py-2 text-sm whitespace-pre-wrap"
+                        class="max-w-[80%] space-y-2 rounded-lg px-4 py-2 text-sm"
                         :class="
                             message.role === 'user'
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted'
                         "
                     >
-                        {{ message.content }}
+                        <ToolUsage
+                            v-for="(tool, index) in message.tools"
+                            :key="index"
+                            :tool="tool"
+                        />
+                        <p v-if="message.content" class="whitespace-pre-wrap">
+                            {{ message.content }}
+                        </p>
                     </div>
                 </div>
 
