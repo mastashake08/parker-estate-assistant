@@ -24,6 +24,7 @@ class ConversationMessageController extends Controller
             $request->user(),
             $request->validated('message'),
             $request->validated('conversation_id'),
+            $request->validated('model'),
         );
 
         Inertia::flash('pendingMessage', $request->validated('message'));

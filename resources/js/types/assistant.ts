@@ -57,5 +57,6 @@ export type ConversationMessage = {
 export type Conversation = {
     id: string;
     title: string;
+    model: string | null;
     messages: ConversationMessage[];
 };

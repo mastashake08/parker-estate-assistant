@@ -21,13 +21,20 @@ class AssistantService
      * Queue the assistant's reply to the user's message and return the conversation ID.
      *
      * Passing a conversation ID continues that conversation; otherwise a new one
-     * is started. The reply is streamed to the user over their private channel.
+     * is started. Passing a model switches the conversation to it. The reply is
+     * streamed to the user over their private channel.
      */
-    public function send(User $user, string $message, ?string $conversationId = null): string
+    public function send(User $user, string $message, ?string $conversationId = null, ?string $model = null): string
     {
-        $conversationId = $conversationId === null
-            ? $this->conversations->start($user, $message)
-            : $this->conversations->find($user, $conversationId)->id;
+        if ($conversationId === null) {
+            $conversationId = $this->conversations->start($user, $message, $model);
+        } else {
+            $conversationId = $this->conversations->find($user, $conversationId)->id;
+
+            if ($model !== null) {
+                $this->conversations->setModel($conversationId, $model);
+            }
+        }
 
         StreamAssistantReply::dispatch($user, $conversationId, $message);
 
@@ -53,7 +60,7 @@ class AssistantService
             ->stream(
                 $message,
                 provider: config('assistant.provider'),
-                model: config('assistant.model'),
+                model: $this->conversations->find($user, $conversationId)->model ?? config('assistant.model'),
             )
             ->each(fn (StreamEvent $event) => AssistantReplyStreamed::dispatch($user, $conversationId, $this->broadcastable($event)));
 

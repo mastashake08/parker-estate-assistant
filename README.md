@@ -7,6 +7,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 ## Features
 
 - **Chat with memory**: every conversation is stored, and the model is sent the earlier messages each time you continue one.
+- **Model per conversation**: pick any installed Ollama model next to the Send button. The choice is saved with the conversation; new chats start on `ASSISTANT_MODEL` when it's installed.
 - **Live replies**: replies are generated on a queue and streamed to the browser token by token over [Laravel Reverb](https://reverb.laravel.com) WebSockets, including which tools the assistant used.
 - **Tool transcript**: each reply lists the tools the assistant used. Expand one to see what it was called with and what it returned.
 - **MCP servers**: connect local (stdio) or remote (HTTP) MCP servers. Their tools become available to the assistant automatically. Each server's tool list is cached, so a local server only starts when one of its tools is used; **Refresh tools** on the Tools page lists them again. Environment variables and headers are encrypted at rest.
@@ -52,7 +53,7 @@ Most settings live in [`config/assistant.php`](config/assistant.php) and can be 
 | --------------------------- | ----------------------------------- | ------------------------------------------------------------ |
 | `AI_PROVIDER`               | `ollama`                            | Provider from `config/ai.php`                                |
 | `OLLAMA_URL`                | `http://host.docker.internal:11434` | Where Ollama is listening (from inside Sail)                 |
-| `ASSISTANT_MODEL`           | `llama3.1`                          | The model the assistant talks to                             |
+| `ASSISTANT_MODEL`           | `llama3.1`                          | The default model; each chat can pick another installed one  |
 | `ASSISTANT_INSTRUCTIONS`    | (built in)                          | The system prompt                                            |
 | `ASSISTANT_MEMORY_MESSAGES` | `50`                                | Earlier messages sent back with each prompt                  |
 | `ASSISTANT_MCP_STDIO`       | `true`                              | Allow local (stdio) MCP servers                              |
