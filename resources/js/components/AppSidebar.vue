@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, FolderGit2, LayoutGrid } from '@lucide/vue';
+import {
+    BookOpen,
+    FolderGit2,
+    LayoutGrid,
+    MessageSquare,
+    Plug,
+    Sparkles,
+    Wrench,
+} from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -15,6 +23,10 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as chat } from '@/routes/chat';
+import { index as mcpServers } from '@/routes/mcp-servers';
+import { index as skills } from '@/routes/skills';
+import { index as tools } from '@/routes/tools';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -22,6 +34,26 @@ const mainNavItems: NavItem[] = [
         title: 'Dashboard',
         href: dashboard(),
         icon: LayoutGrid,
+    },
+    {
+        title: 'Chat',
+        href: chat(),
+        icon: MessageSquare,
+    },
+    {
+        title: 'MCP servers',
+        href: mcpServers(),
+        icon: Plug,
+    },
+    {
+        title: 'Tools',
+        href: tools(),
+        icon: Wrench,
+    },
+    {
+        title: 'Skills',
+        href: skills(),
+        icon: Sparkles,
     },
 ];
 

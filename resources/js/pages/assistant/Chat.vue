@@ -1,0 +1,132 @@
+<script setup lang="ts">
+import { Form, Head, Link, router } from '@inertiajs/vue3';
+import { Plus, Trash2 } from '@lucide/vue';
+import { nextTick, onMounted, ref, watch } from 'vue';
+import ConversationController from '@/actions/App/Http/Controllers/Assistant/ConversationController';
+import ConversationMessageController from '@/actions/App/Http/Controllers/Assistant/ConversationMessageController';
+import InputError from '@/components/InputError.vue';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { index as chatIndex, show as chatShow } from '@/routes/chat';
+import type { Conversation, ConversationSummary } from '@/types';
+
+const props = defineProps<{
+    conversations: ConversationSummary[];
+    conversation: Conversation | null;
+}>();
+
+defineOptions({
+    layout: {
+        breadcrumbs: [{ title: 'Chat', href: chatIndex() }],
+    },
+});
+
+const thread = ref<HTMLElement | null>(null);
+
+const scrollToLatest = () =>
+    nextTick(() => thread.value?.scrollTo({ top: thread.value.scrollHeight }));
+
+onMounted(scrollToLatest);
+watch(() => props.conversation?.messages.length, scrollToLatest);
+
+const deleteConversation = (id: string) => {
+    if (confirm('Delete this conversation? The assistant will forget it.')) {
+        router.delete(ConversationController.destroy.url(id));
+    }
+};
+</script>
+
+<template>
+    <Head :title="conversation?.title ?? 'Chat'" />
+
+    <div class="flex h-[calc(100vh-8rem)] gap-4 p-4">
+        <aside class="hidden w-64 shrink-0 flex-col gap-2 overflow-y-auto md:flex">
+            <Button variant="outline" as-child>
+                <Link :href="chatIndex()"><Plus class="h-4 w-4" /> New chat</Link>
+            </Button>
+
+            <div
+                v-for="item in conversations"
+                :key="item.id"
+                class="group flex items-center gap-1 rounded-md"
+                :class="{ 'bg-muted': item.id === conversation?.id }"
+            >
+                <Link
+                    :href="chatShow(item.id)"
+                    class="flex-1 truncate px-3 py-2 text-sm"
+                >
+                    {{ item.title }}
+                </Link>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    class="opacity-0 group-hover:opacity-100"
+                    :aria-label="`Delete ${item.title}`"
+                    @click="deleteConversation(item.id)"
+                >
+                    <Trash2 class="h-4 w-4" />
+                </Button>
+            </div>
+        </aside>
+
+        <section class="flex flex-1 flex-col rounded-xl border border-sidebar-border/70">
+            <div ref="thread" class="flex-1 space-y-4 overflow-y-auto p-4">
+                <p
+                    v-if="!conversation"
+                    class="mt-12 text-center text-sm text-muted-foreground"
+                >
+                    Start a conversation. The assistant remembers everything said in a chat.
+                </p>
+
+                <div
+                    v-for="message in conversation?.messages ?? []"
+                    :key="message.id"
+                    class="flex"
+                    :class="message.role === 'user' ? 'justify-end' : 'justify-start'"
+                >
+                    <div
+                        class="max-w-[80%] rounded-lg px-4 py-2 text-sm whitespace-pre-wrap"
+                        :class="
+                            message.role === 'user'
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted'
+                        "
+                    >
+                        {{ message.content }}
+                    </div>
+                </div>
+            </div>
+
+            <Form
+                v-bind="ConversationMessageController.store.form()"
+                reset-on-success
+                class="border-t p-4"
+                v-slot="{ errors, processing }"
+            >
+                <input
+                    v-if="conversation"
+                    type="hidden"
+                    name="conversation_id"
+                    :value="conversation.id"
+                />
+                <div class="flex gap-2">
+                    <textarea
+                        name="message"
+                        rows="2"
+                        required
+                        placeholder="Ask your assistant..."
+                        class="flex-1 resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
+                        @keydown.enter.exact.prevent="
+                            ($event.target as HTMLTextAreaElement).form?.requestSubmit()
+                        "
+                    />
+                    <Button type="submit" :disabled="processing">
+                        <Spinner v-if="processing" />
+                        Send
+                    </Button>
+                </div>
+                <InputError class="mt-2" :message="errors.message" />
+            </Form>
+        </section>
+    </div>
+</template>
