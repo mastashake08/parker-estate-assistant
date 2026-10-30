@@ -39,11 +39,19 @@ export type ConversationSummary = {
     updated_at: string;
 };
 
+export type ToolUse = {
+    name: string;
+    arguments: Record<string, unknown>;
+    result: string;
+    failed: boolean;
+};
+
 export type ConversationMessage = {
     id: string;
     role: 'user' | 'assistant';
-    content: string;
+    content: string | null;
     created_at: string;
+    tools: ToolUse[];
 };
 
 export type Conversation = {
