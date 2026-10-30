@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\Mcp\McpConnector;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as BaseCollection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Laravel\Mcp\Client\Primitives\Tool;
 
@@ -71,16 +72,43 @@ class McpServerService
 
             $server->delete();
         });
+
+        Cache::forget($this->toolCacheKey($server));
     }
 
     /**
-     * List the tools the server currently exposes.
+     * List the tools the server exposes.
+     *
+     * The list is cached so the server is not started on every message. Editing
+     * the server changes the cache key, and a failed connection is not cached.
      *
      * @return BaseCollection<int, Tool>
      */
     public function tools(McpServer $server): BaseCollection
     {
-        return $this->connector->tools($server);
+        $definitions = Cache::remember(
+            $this->toolCacheKey($server),
+            config()->integer('assistant.mcp.tool_cache_seconds'),
+            fn () => $this->connector->listTools($server),
+        );
+
+        return $this->connector->bind($server, $definitions);
+    }
+
+    /**
+     * Forget the server's cached tools so they are listed again.
+     */
+    public function refreshTools(McpServer $server): void
+    {
+        Cache::forget($this->toolCacheKey($server));
+    }
+
+    /**
+     * The cache key for the server's tools, which changes whenever the server is edited.
+     */
+    protected function toolCacheKey(McpServer $server): string
+    {
+        return "mcp-tools:{$server->id}:{$server->updated_at?->getTimestamp()}";
     }
 
     /**

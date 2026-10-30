@@ -65,4 +65,18 @@ class McpServerController extends Controller
 
         return to_route('mcp-servers.index');
     }
+
+    /**
+     * Forget a server's cached tools so the Tools page lists them again.
+     */
+    public function refresh(McpServer $mcpServer): RedirectResponse
+    {
+        Gate::authorize('update', $mcpServer);
+
+        $this->servers->refreshTools($mcpServer);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => __('Tools refreshed.')]);
+
+        return to_route('tools.index');
+    }
 }

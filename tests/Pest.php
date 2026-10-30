@@ -1,7 +1,13 @@
 <?php
 
+use App\Models\McpServer;
+use App\Services\Mcp\McpConnector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Mcp\Client\Primitives\Tool as McpTool;
+use Mockery\MockInterface;
 use Tests\TestCase;
+
+use function Pest\Laravel\mock;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,7 +50,17 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Fake the MCP connector so no server is started. Tool definitions are bound
+ * without a client, and tests set expectations on "listTools".
+ */
+function fakeMcpConnector(): MockInterface
 {
-    // ..
+    $connector = mock(McpConnector::class);
+
+    $connector->shouldReceive('bind')->andReturnUsing(
+        fn (McpServer $server, array $definitions) => collect($definitions)->map(fn (array $definition) => McpTool::from(null, $definition)),
+    );
+
+    return $connector;
 }

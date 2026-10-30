@@ -3,19 +3,18 @@
 use App\Models\DisabledTool;
 use App\Models\McpServer;
 use App\Models\User;
-use App\Services\Mcp\McpConnector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Mcp\Client\Primitives\Tool as McpTool;
 use Laravel\Mcp\Exceptions\ClientException;
-
-use function Pest\Laravel\mock;
 
 uses(RefreshDatabase::class);
 
-function mcpTool(string $name, string $description = 'An MCP tool.'): McpTool
+/**
+ * @return array{name: string, description: string}
+ */
+function mcpTool(string $name, string $description = 'An MCP tool.'): array
 {
-    return McpTool::from(null, ['name' => $name, 'description' => $description]);
+    return ['name' => $name, 'description' => $description];
 }
 
 test('guests are redirected to the login page', function () {
@@ -28,11 +27,11 @@ test('the tools page lists built-in tools and tools from enabled MCP servers', f
     McpServer::factory()->for($user)->create(['enabled' => false]);
     DisabledTool::factory()->for($user)->create(['tool' => "mcp:{$server->id}:write_file"]);
 
-    mock(McpConnector::class)
-        ->shouldReceive('tools')
+    fakeMcpConnector()
+        ->shouldReceive('listTools')
         ->once()
         ->withArgs(fn (McpServer $connected) => $connected->is($server))
-        ->andReturn(collect([mcpTool('read_file'), mcpTool('write_file')]));
+        ->andReturn([mcpTool('read_file'), mcpTool('write_file')]);
 
     $this->actingAs($user)
         ->get(route('tools.index'))
@@ -54,8 +53,8 @@ test('an unreachable MCP server is reported without breaking the page', function
     $user = User::factory()->create();
     McpServer::factory()->for($user)->create();
 
-    mock(McpConnector::class)
-        ->shouldReceive('tools')
+    fakeMcpConnector()
+        ->shouldReceive('listTools')
         ->andThrow(new ClientException('Connection refused.'));
 
     $this->actingAs($user)

@@ -9,7 +9,6 @@ use App\Models\Skill;
 use App\Models\User;
 use App\Services\Browser\Browser;
 use App\Services\Browser\RenderedPage;
-use App\Services\Mcp\McpConnector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -96,13 +95,10 @@ test('the agent only receives enabled tools and skills', function () {
     Skill::factory()->for($user)->create(['name' => 'taxes']);
     Skill::factory()->for($user)->create(['name' => 'gardening', 'enabled' => false]);
 
-    mock(McpConnector::class)
-        ->shouldReceive('tools')
+    fakeMcpConnector()
+        ->shouldReceive('listTools')
         ->once()
-        ->andReturn(collect([
-            McpTool::from(null, ['name' => 'read_file']),
-            McpTool::from(null, ['name' => 'write_file']),
-        ]));
+        ->andReturn([['name' => 'read_file'], ['name' => 'write_file']]);
 
     $this->actingAs($user)->post(route('chat.messages.store'), ['message' => 'Read the will']);
 
@@ -134,8 +130,8 @@ test('an unreachable MCP server does not stop the assistant from replying', func
     $user = User::factory()->create();
     McpServer::factory()->for($user)->create();
 
-    mock(McpConnector::class)
-        ->shouldReceive('tools')
+    fakeMcpConnector()
+        ->shouldReceive('listTools')
         ->andThrow(new ClientException('Connection refused.'));
 
     $this->actingAs($user)
