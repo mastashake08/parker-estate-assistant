@@ -2,6 +2,7 @@
 
 use App\Ai\Agents\EstateAssistant;
 use App\Ai\Tools\CurrentDateTime;
+use App\Ai\Tools\WebSearch;
 use App\Models\DisabledTool;
 use App\Models\McpServer;
 use App\Models\Skill;
@@ -118,7 +119,11 @@ test('disabled built-in tools are not given to the agent', function () {
 
     $this->actingAs($user)->post(route('chat.messages.store'), ['message' => 'What time is it?']);
 
-    EstateAssistant::assertPrompted(fn (AgentPrompt $prompt) => collect($prompt->agent->tools())->isEmpty());
+    EstateAssistant::assertPrompted(function (AgentPrompt $prompt) {
+        $tools = collect($prompt->agent->tools())->map(fn ($tool) => $tool::class);
+
+        return ! $tools->contains(CurrentDateTime::class) && $tools->contains(WebSearch::class);
+    });
 });
 
 test('an unreachable MCP server does not stop the assistant from replying', function () {

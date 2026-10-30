@@ -24,6 +24,7 @@ services:
         depends_on:
             - mysql
             - redis
+            - chrome
     mysql:
         image: 'mysql:8.4'
         ports:
@@ -64,6 +65,13 @@ services:
                 - ping
             retries: 3
             timeout: 5s
+    chrome:
+        image: 'ghcr.io/browserless/chromium:latest'
+        environment:
+            CONCURRENT: '${BROWSER_CONCURRENT:-5}'
+            TIMEOUT: '${BROWSER_SESSION_TIMEOUT:-60000}'
+        networks:
+            - sail
 networks:
     sail:
         driver: bridge

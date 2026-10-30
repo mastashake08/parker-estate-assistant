@@ -1,6 +1,8 @@
 <?php
 
 use App\Ai\Tools\CurrentDateTime;
+use App\Ai\Tools\WebFetch;
+use App\Ai\Tools\WebSearch;
 
 return [
 
@@ -46,6 +48,36 @@ return [
 
     'tools' => [
         CurrentDateTime::class,
+        WebSearch::class,
+        WebFetch::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Web Tools
+    |--------------------------------------------------------------------------
+    |
+    | The web search and web fetch tools render pages in headless Chrome so
+    | JavaScript-heavy sites work. Set BROWSER_ENDPOINT to the WebSocket URL
+    | of a remote Chrome (the "chrome" Sail service), or leave it empty to
+    | launch the Chrome installed on this machine (BROWSER_CHROME_BINARY if needed).
+    |
+    | The search URL receives the URL-encoded query in place of "%s" and
+    | must return DuckDuckGo's HTML results markup.
+    |
+    */
+
+    'browser' => [
+        'endpoint' => env('BROWSER_ENDPOINT'),
+        'binary' => env('BROWSER_CHROME_BINARY'),
+        'timeout' => (int) env('BROWSER_TIMEOUT', 30),
+        'user_agent' => env('BROWSER_USER_AGENT', 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'),
+    ],
+
+    'web' => [
+        'search_url' => env('WEB_SEARCH_URL', 'https://html.duckduckgo.com/html/?q=%s'),
+        'search_results' => (int) env('WEB_SEARCH_RESULTS', 5),
+        'max_characters' => (int) env('WEB_FETCH_MAX_CHARACTERS', 20000),
     ],
 
     /*
