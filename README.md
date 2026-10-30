@@ -84,9 +84,20 @@ Sending a message queues a `StreamAssistantReply` job and redirects straight bac
 
 This needs both a **queue worker** and the **Reverb server** running. `composer run dev` starts both. Without a worker, messages are accepted but no reply ever arrives. Reverb listens on port 8080, which `compose.yaml` publishes from the app container.
 
+### Using it from other devices on your network
+
+The app container publishes port 80 on every interface, so other devices can open `http://<this machine's address>` (on a Mac, `ipconfig getifaddr en0` prints it). Two addresses are baked into the pages and must point at this machine instead of `localhost`:
+
+```dotenv
+VITE_REVERB_HOST=192.168.0.60   # live replies; keep REVERB_HOST="localhost" for the server side
+VITE_HMR_HOST=192.168.0.60      # only needed while the Vite dev server runs
+```
+
+Rebuild the assets (`vendor/bin/sail npm run build`) or restart `composer run dev` after changing them. Anyone on the network can then register and add local MCP servers, which run commands on this machine, so set `ASSISTANT_MCP_STDIO=false` unless you trust everyone on it.
+
 ### MCP sign-in (OAuth)
 
-Remote MCP servers that answer with `401` show **Sign in** on the MCP servers and Tools pages. Signing in uses the OAuth support in `laravel/mcp`: it reads the server's protected resource metadata, registers the app with dynamic client registration (or uses the client ID and secret entered under **OAuth sign-in** on the server's form), and sends you to the provider's sign-in page. The provider returns you to `/settings/mcp-servers/{id}/oauth/callback`, so it must be able to redirect your browser to `APP_URL`. Changing a server's URL or client signs you out.
+Remote MCP servers that answer with `401` show **Sign in** on the MCP servers and Tools pages. Signing in uses the OAuth support in `laravel/mcp`: it reads the server's protected resource metadata, registers the app with dynamic client registration (or uses the client ID and secret entered under **OAuth sign-in** on the server's form), and sends you to the provider's sign-in page. When no scopes are entered, it asks for the scopes the server advertises. The provider returns you to `/settings/mcp-servers/{id}/oauth/callback` on the address you opened the app at. Some providers, such as WorkOS AuthKit, only accept `https` or `localhost` return addresses, so sign in from `http://localhost` when the app has no `https` address. Once signed in, the tokens work from any address. Changing a server's URL or client signs you out.
 
 ### Documents
 
