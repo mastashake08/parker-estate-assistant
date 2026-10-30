@@ -7,6 +7,9 @@ export type McpServer = {
     command: string | null;
     args: string[] | null;
     url: string | null;
+    oauth_client_id: string | null;
+    oauth_scope: string | null;
+    signed_in: boolean;
     timeout: number | null;
     enabled: boolean;
 };
@@ -22,6 +25,7 @@ export type McpServerTools = {
     id: number;
     name: string;
     error: string | null;
+    signInRequired: boolean;
     tools: AssistantTool[];
 };
 

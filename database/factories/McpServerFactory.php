@@ -31,4 +31,34 @@ class McpServerFactory extends Factory
             'enabled' => true,
         ];
     }
+
+    /**
+     * A remote server reached over HTTP.
+     */
+    public function http(): static
+    {
+        return $this->state(fn () => [
+            'transport' => McpTransport::Http,
+            'command' => null,
+            'args' => null,
+            'env' => null,
+            'url' => 'https://mcp.acme.com/mcp',
+        ]);
+    }
+
+    /**
+     * A remote server the user has signed in to with OAuth.
+     */
+    public function signedIn(): static
+    {
+        return $this->http()->state(fn () => [
+            'oauth_tokens' => [
+                'access_token' => 'access-1',
+                'refresh_token' => 'refresh-1',
+                'expires_at' => now()->addHour()->getTimestamp(),
+                'client_id' => 'registered-client',
+                'client_secret' => null,
+            ],
+        ]);
+    }
 }
