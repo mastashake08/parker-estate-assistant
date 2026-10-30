@@ -2,6 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 import AppearanceTabs from '@/components/AppearanceTabs.vue';
 import Heading from '@/components/Heading.vue';
+import SpeechSettings from '@/components/SpeechSettings.vue';
 import { edit } from '@/routes/appearance';
 
 defineOptions({
@@ -28,5 +29,12 @@ defineOptions({
             description="Update the appearance settings for your account"
         />
         <AppearanceTabs />
+
+        <Heading
+            variant="small"
+            title="Read aloud"
+            description="Have the assistant speak its replies"
+        />
+        <SpeechSettings />
     </div>
 </template>

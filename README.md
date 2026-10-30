@@ -18,6 +18,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
     - `current_date_time`: the current date and time in any timezone.
 - **Document analysis**: attach PDF, Word (.docx), text, Markdown or CSV files to a message (up to 5, 20 MB each). Their text is given to the assistant for the rest of the conversation, and long documents can be read in full with the `read_document` tool.
 - **Email and text messages that need your approval**: `send_email` (Laravel Mail) and `send_sms` (Twilio, through Laravel Notifications) never send on their own. The reply pauses and shows exactly what will be sent, with **Approve** and **Deny** buttons, and continues once you decide.
+- **Read aloud**: press **Listen** under any reply, or turn on the speaker button next to Send to hear each new reply. It uses the browser's built-in speech synthesis, so it works offline and nothing is sent anywhere. Choose the voice and speed under **Settings → Appearance**; they're saved per device.
 - **Skills**: named instructions the assistant loads on demand when a task matches the skill's description.
 
 ## Requirements
