@@ -51,13 +51,19 @@ const toggle = (tool: AssistantTool, enabled: boolean) => {
                 />
                 <span>
                     <span class="block font-mono text-sm">{{ tool.name }}</span>
-                    <span class="text-sm text-muted-foreground">{{ tool.description }}</span>
+                    <span class="text-sm text-muted-foreground">{{
+                        tool.description
+                    }}</span>
                 </span>
             </label>
         </section>
 
         <section v-for="server in servers" :key="server.id" class="space-y-3">
-            <Heading variant="small" :title="server.name" description="MCP server" />
+            <Heading
+                variant="small"
+                :title="server.name"
+                description="MCP server"
+            />
 
             <AlertError
                 v-if="server.error"
@@ -84,14 +90,18 @@ const toggle = (tool: AssistantTool, enabled: boolean) => {
                 />
                 <span>
                     <span class="block font-mono text-sm">{{ tool.name }}</span>
-                    <span class="text-sm text-muted-foreground">{{ tool.description }}</span>
+                    <span class="text-sm text-muted-foreground">{{
+                        tool.description
+                    }}</span>
                 </span>
             </label>
         </section>
 
         <p v-if="!servers.length" class="text-sm text-muted-foreground">
             Connect an
-            <Link :href="mcpServersIndex()" class="underline underline-offset-4">MCP server</Link>
+            <Link :href="mcpServersIndex()" class="underline underline-offset-4"
+                >MCP server</Link
+            >
             to give your assistant more tools.
         </p>
     </div>

@@ -11,7 +11,7 @@ use App\Services\Mcp\McpConnector;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
-use Laravel\Ai\Events\PromptingAgent;
+use Laravel\Ai\Events\StreamingAgent;
 use Laravel\Ai\Models\Conversation;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Laravel\Ai\Skills\Skill as AiSkill;
@@ -53,7 +53,7 @@ test('continuing a conversation gives the model the earlier messages', function 
     $conversation = Conversation::sole();
 
     $history = [];
-    Event::listen(PromptingAgent::class, function (PromptingAgent $event) use (&$history) {
+    Event::listen(StreamingAgent::class, function (StreamingAgent $event) use (&$history) {
         $history = collect($event->prompt->agent->messages())->pluck('content')->all();
     });
 
