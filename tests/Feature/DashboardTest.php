@@ -1,8 +1,9 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+uses(RefreshDatabase::class);
 
 test('guests are redirected to the login page', function () {
     $response = $this->get(route('dashboard'));
@@ -15,4 +16,10 @@ test('authenticated users can visit the dashboard', function () {
 
     $response = $this->get(route('dashboard'));
     $response->assertOk();
+});
+test('users can use the app without verifying their email', function () {
+    $this->actingAs(User::factory()->unverified()->create());
+
+    $this->get(route('dashboard'))->assertOk();
+    $this->get(route('chat.index'))->assertOk();
 });
