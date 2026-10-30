@@ -6,17 +6,48 @@ use App\Enums\McpTransport;
 use App\Models\McpServer;
 use Illuminate\Support\Collection;
 use Laravel\Mcp\Client;
+use Laravel\Mcp\Client\Primitives\Tool;
 
 class ClientMcpConnector implements McpConnector
 {
     /**
-     * Connect to the server and list the tools it exposes.
+     * Connect to the server and list the definitions of the tools it exposes.
      *
-     * @return Collection<int, Client\Primitives\Tool>
+     * @return list<array<string, mixed>>
      */
-    public function tools(McpServer $server): Collection
+    public function listTools(McpServer $server): array
     {
-        return $this->client($server)->tools()->values();
+        $client = $this->client($server);
+
+        try {
+            return array_values($client->tools()->map(fn (Tool $tool) => [
+                'name' => $tool->name,
+                'title' => $tool->title,
+                'description' => $tool->description,
+                'inputSchema' => $tool->inputSchema,
+                'outputSchema' => $tool->outputSchema,
+                'annotations' => $tool->annotations,
+                '_meta' => $tool->meta,
+            ])->all());
+        } finally {
+            $client->disconnect();
+        }
+    }
+
+    /**
+     * Turn tool definitions into tools that connect to the server when first called.
+     *
+     * The client only connects (starting a local server's process) when one of
+     * the tools is called.
+     *
+     * @param  list<array<string, mixed>>  $definitions
+     * @return Collection<int, Tool>
+     */
+    public function bind(McpServer $server, array $definitions): Collection
+    {
+        $client = $this->client($server);
+
+        return collect($definitions)->map(fn (array $definition) => Tool::from($client, $definition));
     }
 
     /**

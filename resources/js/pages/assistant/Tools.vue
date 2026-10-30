@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3';
+import { RefreshCw } from '@lucide/vue';
+import McpServerController from '@/actions/App/Http/Controllers/Assistant/McpServerController';
 import ToolController from '@/actions/App/Http/Controllers/Assistant/ToolController';
 import AlertError from '@/components/AlertError.vue';
 import Heading from '@/components/Heading.vue';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { index as mcpServersIndex } from '@/routes/mcp-servers';
 import { index } from '@/routes/tools';
@@ -23,6 +26,14 @@ const toggle = (tool: AssistantTool, enabled: boolean) => {
     router.put(
         ToolController.update.url(),
         { tool: tool.key, enabled },
+        { preserveScroll: true },
+    );
+};
+
+const refresh = (server: McpServerTools) => {
+    router.post(
+        McpServerController.refresh.url(server.id),
+        {},
         { preserveScroll: true },
     );
 };
@@ -59,11 +70,16 @@ const toggle = (tool: AssistantTool, enabled: boolean) => {
         </section>
 
         <section v-for="server in servers" :key="server.id" class="space-y-3">
-            <Heading
-                variant="small"
-                :title="server.name"
-                description="MCP server"
-            />
+            <div class="flex items-start justify-between gap-4">
+                <Heading
+                    variant="small"
+                    :title="server.name"
+                    description="MCP server"
+                />
+                <Button variant="outline" size="sm" @click="refresh(server)">
+                    <RefreshCw class="h-4 w-4" /> Refresh tools
+                </Button>
+            </div>
 
             <AlertError
                 v-if="server.error"

@@ -93,6 +93,7 @@ return [
     'mcp' => [
         'stdio_enabled' => (bool) env('ASSISTANT_MCP_STDIO', true),
         'timeout' => (float) env('ASSISTANT_MCP_TIMEOUT', 30),
+        'tool_cache_seconds' => (int) env('ASSISTANT_MCP_TOOL_CACHE', 3600),
     ],
 
 ];

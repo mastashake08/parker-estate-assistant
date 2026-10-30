@@ -18,6 +18,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('settings/mcp-servers', McpServerController::class)
         ->only(['index', 'store', 'update', 'destroy'])
         ->names('mcp-servers');
+    Route::post('settings/mcp-servers/{mcp_server}/refresh', [McpServerController::class, 'refresh'])
+        ->name('mcp-servers.refresh');
 
     Route::resource('settings/skills', SkillController::class)
         ->only(['index', 'store', 'update', 'destroy'])

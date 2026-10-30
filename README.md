@@ -9,7 +9,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 - **Chat with memory**: every conversation is stored, and the model is sent the earlier messages each time you continue one.
 - **Live replies**: replies are generated on a queue and streamed to the browser token by token over [Laravel Reverb](https://reverb.laravel.com) WebSockets, including which tools the assistant used.
 - **Tool transcript**: each reply lists the tools the assistant used. Expand one to see what it was called with and what it returned.
-- **MCP servers**: connect local (stdio) or remote (HTTP) MCP servers. Their tools become available to the assistant automatically. Environment variables and headers are encrypted at rest.
+- **MCP servers**: connect local (stdio) or remote (HTTP) MCP servers. Their tools become available to the assistant automatically. Each server's tool list is cached, so a local server only starts when one of its tools is used; **Refresh tools** on the Tools page lists them again. Environment variables and headers are encrypted at rest.
 - **Tools**: switch any built-in or MCP tool on or off. Built-in tools:
     - `web_search`: searches DuckDuckGo in headless Chrome and returns titles, URLs and snippets.
     - `web_fetch`: opens a page in headless Chrome (so JavaScript-rendered content works) and returns its text. It only reaches public addresses.
@@ -57,6 +57,7 @@ Most settings live in [`config/assistant.php`](config/assistant.php) and can be 
 | `ASSISTANT_MEMORY_MESSAGES` | `50`                                | Earlier messages sent back with each prompt                  |
 | `ASSISTANT_MCP_STDIO`       | `true`                              | Allow local (stdio) MCP servers                              |
 | `ASSISTANT_MCP_TIMEOUT`     | `30`                                | Seconds to wait for an MCP server                            |
+| `ASSISTANT_MCP_TOOL_CACHE`  | `3600`                              | Seconds to cache each MCP server's tool list                 |
 | `BROWSER_ENDPOINT`          | `ws://chrome:3000`                  | Remote headless Chrome; leave empty to launch a local Chrome |
 | `BROWSER_CHROME_BINARY`     | (auto-detected)                     | Path to Chrome when launching locally                        |
 | `BROWSER_TIMEOUT`           | `30`                                | Seconds to wait for a page to load                           |
