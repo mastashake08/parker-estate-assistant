@@ -75,6 +75,24 @@ export type ConversationDocument = {
     size: number;
 };
 
+export type EnabledCount = {
+    enabled: number;
+    total: number;
+};
+
+export type DashboardStats = {
+    conversations: number;
+    documents: number;
+    skills: EnabledCount;
+    mcpServers: EnabledCount;
+};
+
+export type ModelStatus = {
+    name: string;
+    installed: boolean;
+    available: string[];
+};
+
 export type Conversation = {
     id: string;
     title: string;
