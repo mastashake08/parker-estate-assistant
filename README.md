@@ -12,6 +12,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 - **Linked sources**: `web_search` and `web_fetch` return Markdown links, and every reply that used them ends with a numbered **Sources** list of the pages, so you can always click through.
 - **Tool transcript**: each reply lists the tools the assistant used. Expand one to see what it was called with and what it returned.
 - **MCP servers**: connect local (stdio) or remote (HTTP) MCP servers. Their tools become available to the assistant automatically. Each server's tool list is cached, so a local server only starts when one of its tools is used; **Refresh tools** on the Tools page lists them again. Environment variables and headers are encrypted at rest.
+- **MCP sign-in (OAuth)**: remote servers that require signing in get a **Sign in** button. The app finds the server's authorization server, registers itself if needed, and signs in with PKCE. Tokens are stored encrypted and refreshed automatically before they expire.
 - **Tools**: switch any built-in or MCP tool on or off. Built-in tools:
     - `web_search`: searches DuckDuckGo in headless Chrome and returns titles, URLs and snippets.
     - `web_fetch`: opens a page in headless Chrome (so JavaScript-rendered content works) and returns its text. It only reaches public addresses.
@@ -82,6 +83,10 @@ Under Sail, the `chrome` service in [`compose.yaml`](compose.yaml) runs [browser
 Sending a message queues a `StreamAssistantReply` job and redirects straight back to the chat. The job streams the reply from the model and broadcasts each piece as an `assistant.stream` event on the user's private `App.Models.User.{id}` channel. It finishes with a `reply_complete` event, sent once the exchange has been saved, and the chat page then reloads the stored messages.
 
 This needs both a **queue worker** and the **Reverb server** running. `composer run dev` starts both. Without a worker, messages are accepted but no reply ever arrives. Reverb listens on port 8080, which `compose.yaml` publishes from the app container.
+
+### MCP sign-in (OAuth)
+
+Remote MCP servers that answer with `401` show **Sign in** on the MCP servers and Tools pages. Signing in uses the OAuth support in `laravel/mcp`: it reads the server's protected resource metadata, registers the app with dynamic client registration (or uses the client ID and secret entered under **OAuth sign-in** on the server's form), and sends you to the provider's sign-in page. The provider returns you to `/settings/mcp-servers/{id}/oauth/callback`, so it must be able to redirect your browser to `APP_URL`. Changing a server's URL or client signs you out.
 
 ### Documents
 

@@ -10,6 +10,8 @@ use Laravel\Mcp\Client\Primitives\Tool;
 
 class ClientMcpConnector implements McpConnector
 {
+    public function __construct(protected McpOAuthService $oauth) {}
+
     /**
      * Connect to the server and list the definitions of the tools it exposes.
      *
@@ -57,7 +59,9 @@ class ClientMcpConnector implements McpConnector
     {
         $client = match ($server->transport) {
             McpTransport::Stdio => Client::local((string) $server->command, $server->args ?? [], $server->env ?? []),
-            McpTransport::Http => Client::web((string) $server->url)->withHeaders($server->headers ?? []),
+            McpTransport::Http => Client::web((string) $server->url)
+                ->withHeaders($server->headers ?? [])
+                ->withToken(fn (): ?string => $this->oauth->accessToken($server)),
         };
 
         return $client

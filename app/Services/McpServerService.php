@@ -49,13 +49,21 @@ class McpServerService
     /**
      * Update an MCP server's connection details.
      *
-     * Secrets (env and headers) are only replaced when they are submitted.
+     * Secrets (env, headers and the OAuth client secret) are only replaced
+     * when they are submitted. Changing the URL or OAuth client signs out,
+     * since the tokens belong to the old one.
      *
      * @param  array<string, mixed>  $attributes
      */
     public function update(McpServer $server, array $attributes): McpServer
     {
-        $server->update($this->normalize($attributes));
+        $server->fill($this->normalize($attributes));
+
+        if ($server->isDirty(['transport', 'url', 'oauth_client_id', 'oauth_client_secret'])) {
+            $server->oauth_tokens = null;
+        }
+
+        $server->save();
 
         return $server;
     }
@@ -120,7 +128,7 @@ class McpServerService
     protected function normalize(array $attributes): array
     {
         return match (McpTransport::tryFrom($attributes['transport'] ?? '')) {
-            McpTransport::Stdio => [...$attributes, 'url' => null, 'headers' => null],
+            McpTransport::Stdio => [...$attributes, 'url' => null, 'headers' => null, 'oauth_client_id' => null, 'oauth_client_secret' => null, 'oauth_scope' => null],
             McpTransport::Http => [...$attributes, 'command' => null, 'args' => null, 'env' => null],
             default => $attributes,
         };

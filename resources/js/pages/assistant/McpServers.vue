@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
+import { LogIn } from '@lucide/vue';
 import { ref } from 'vue';
 import McpServerController from '@/actions/App/Http/Controllers/Assistant/McpServerController';
+import McpServerOAuthController from '@/actions/App/Http/Controllers/Assistant/McpServerOAuthController';
 import Heading from '@/components/Heading.vue';
 import InputError from '@/components/InputError.vue';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +38,9 @@ const form = useForm({
     env: '',
     url: '',
     headers: '',
+    oauth_client_id: '',
+    oauth_client_secret: '',
+    oauth_scope: '',
     enabled: true,
 });
 
@@ -69,10 +74,15 @@ const payload = (data: typeof form.data extends () => infer T ? T : never) => {
             .map((arg) => arg.trim())
             .filter(Boolean),
         url: data.url || null,
+        oauth_client_id: data.oauth_client_id || null,
+        oauth_scope: data.oauth_scope || null,
         enabled: data.enabled,
         // Secrets are never sent back to the browser, so only overwrite them when new values are entered.
         ...(Object.keys(env).length ? { env } : {}),
         ...(Object.keys(headers).length ? { headers } : {}),
+        ...(data.oauth_client_secret
+            ? { oauth_client_secret: data.oauth_client_secret }
+            : {}),
     };
 };
 
@@ -87,6 +97,9 @@ const edit = (server: McpServer) => {
         env: '',
         url: server.url ?? '',
         headers: '',
+        oauth_client_id: server.oauth_client_id ?? '',
+        oauth_client_secret: '',
+        oauth_scope: server.oauth_scope ?? '',
         enabled: server.enabled,
     });
     form.reset();
@@ -102,6 +115,9 @@ const cancel = () => {
         env: '',
         url: '',
         headers: '',
+        oauth_client_id: '',
+        oauth_client_secret: '',
+        oauth_scope: '',
         enabled: true,
     });
     form.reset();
@@ -116,6 +132,18 @@ const submit = () => {
         form.put(McpServerController.update.url(editing.value.id), options);
     } else {
         form.post(McpServerController.store.url(), options);
+    }
+};
+
+/** Leave for the server's sign-in page, which sends the user back here. */
+const signIn = (server: McpServer) =>
+    router.post(McpServerOAuthController.store.url(server.id));
+
+const signOut = (server: McpServer) => {
+    if (confirm(`Sign out of ${server.name}?`)) {
+        router.delete(McpServerOAuthController.destroy.url(server.id), {
+            preserveScroll: true,
+        });
     }
 };
 
@@ -153,6 +181,7 @@ const remove = (server: McpServer) => {
                         <Badge variant="secondary">{{
                             server.transport
                         }}</Badge>
+                        <Badge v-if="server.signed_in">signed in</Badge>
                         <Badge v-if="!server.enabled" variant="outline"
                             >disabled</Badge
                         >
@@ -168,6 +197,22 @@ const remove = (server: McpServer) => {
                     </p>
                 </div>
                 <div class="flex shrink-0 gap-2">
+                    <template v-if="server.transport === 'http'">
+                        <Button
+                            v-if="server.signed_in"
+                            variant="ghost"
+                            size="sm"
+                            @click="signOut(server)"
+                            >Sign out</Button
+                        >
+                        <Button
+                            v-else
+                            variant="outline"
+                            size="sm"
+                            @click="signIn(server)"
+                            ><LogIn class="h-4 w-4" /> Sign in</Button
+                        >
+                    </template>
                     <Button variant="outline" size="sm" @click="edit(server)"
                         >Edit</Button
                     >
@@ -276,6 +321,60 @@ const remove = (server: McpServer) => {
                     />
                     <InputError :message="form.errors.headers" />
                 </div>
+                <details
+                    class="rounded-md border p-3 text-sm"
+                    :open="!!(form.oauth_client_id || form.oauth_scope)"
+                >
+                    <summary class="cursor-pointer font-medium">
+                        OAuth sign-in (optional)
+                    </summary>
+                    <p class="mt-2 text-muted-foreground">
+                        Servers that need you to sign in work without these:
+                        save the server, then use <strong>Sign in</strong>. Only
+                        fill them in if the server's provider gave you a client
+                        ID.
+                    </p>
+                    <div class="mt-3 grid gap-3">
+                        <div class="grid gap-2">
+                            <Label for="oauth_client_id">Client ID</Label>
+                            <Input
+                                id="oauth_client_id"
+                                v-model="form.oauth_client_id"
+                            />
+                            <InputError
+                                :message="form.errors.oauth_client_id"
+                            />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="oauth_client_secret"
+                                >Client secret</Label
+                            >
+                            <Input
+                                id="oauth_client_secret"
+                                v-model="form.oauth_client_secret"
+                                type="password"
+                                autocomplete="off"
+                                :placeholder="
+                                    editing
+                                        ? 'Leave blank to keep the saved value'
+                                        : ''
+                                "
+                            />
+                            <InputError
+                                :message="form.errors.oauth_client_secret"
+                            />
+                        </div>
+                        <div class="grid gap-2">
+                            <Label for="oauth_scope">Scopes</Label>
+                            <Input
+                                id="oauth_scope"
+                                v-model="form.oauth_scope"
+                                placeholder="mcp:use"
+                            />
+                            <InputError :message="form.errors.oauth_scope" />
+                        </div>
+                    </div>
+                </details>
             </template>
 
             <Label class="flex items-center gap-2">
