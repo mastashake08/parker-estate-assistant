@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link, router, usePage } from '@inertiajs/vue3';
-import { Plus, Trash2, Wrench } from '@lucide/vue';
+import { FileText, Paperclip, Plus, Trash2, Wrench, X } from '@lucide/vue';
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import ConversationController from '@/actions/App/Http/Controllers/Assistant/ConversationController';
 import ConversationMessageController from '@/actions/App/Http/Controllers/Assistant/ConversationMessageController';
@@ -33,6 +33,35 @@ const { streams, clear } = useAssistantStream();
 const pendingMessage = computed(
     () => page.flash.pendingMessage as string | undefined,
 );
+
+/** The names of the documents sent with the pending message. */
+const pendingDocuments = computed(
+    () => (page.flash.pendingDocuments as string[] | undefined) ?? [],
+);
+
+/** The documents chosen to send with the next message. */
+const documentInput = ref<HTMLInputElement | null>(null);
+const chosenDocuments = ref<string[]>([]);
+
+const chooseDocuments = (event: Event) => {
+    chosenDocuments.value = Array.from(
+        (event.target as HTMLInputElement).files ?? [],
+    ).map((file) => file.name);
+};
+
+const clearDocuments = () => {
+    if (documentInput.value) {
+        documentInput.value.value = '';
+    }
+
+    chosenDocuments.value = [];
+};
+
+/** A file size such as "12 KB". */
+const fileSize = (bytes: number) =>
+    bytes < 1024 * 1024
+        ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+        : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
 /** Set after approving or denying tool calls, while the rest of the reply streams. */
 const resumingReply = computed(() => page.flash.resumingReply === true);
@@ -142,6 +171,24 @@ const deleteConversation = (id: string) => {
         <section
             class="flex flex-1 flex-col rounded-xl border border-sidebar-border/70"
         >
+            <div
+                v-if="conversation?.documents.length"
+                class="flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs"
+            >
+                <span class="text-muted-foreground">Shared documents:</span>
+                <span
+                    v-for="document in conversation.documents"
+                    :key="document.id"
+                    class="flex items-center gap-1 rounded-md bg-muted px-2 py-1"
+                >
+                    <FileText class="h-3 w-3" />
+                    {{ document.name }}
+                    <span class="text-muted-foreground">{{
+                        fileSize(document.size)
+                    }}</span>
+                </span>
+            </div>
+
             <div ref="thread" class="flex-1 space-y-4 overflow-y-auto p-4">
                 <p
                     v-if="!conversation"
@@ -226,6 +273,13 @@ const deleteConversation = (id: string) => {
                             class="max-w-[80%] rounded-lg bg-primary px-4 py-2 text-sm whitespace-pre-wrap text-primary-foreground"
                         >
                             {{ pendingMessage }}
+                            <p
+                                v-for="name in pendingDocuments"
+                                :key="name"
+                                class="mt-1 flex items-center gap-1 text-xs opacity-80"
+                            >
+                                <Paperclip class="h-3 w-3" /> {{ name }}
+                            </p>
                         </div>
                     </div>
 
@@ -260,7 +314,29 @@ const deleteConversation = (id: string) => {
                 :reset-on-success="['message']"
                 class="border-t p-4"
                 v-slot="{ errors, processing }"
+                @success="clearDocuments"
             >
+                <div
+                    v-if="chosenDocuments.length"
+                    class="mb-2 flex flex-wrap items-center gap-2 text-xs"
+                >
+                    <span
+                        v-for="name in chosenDocuments"
+                        :key="name"
+                        class="flex items-center gap-1 rounded-md bg-muted px-2 py-1"
+                    >
+                        <Paperclip class="h-3 w-3" /> {{ name }}
+                    </span>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        class="h-6 px-2"
+                        @click="clearDocuments"
+                    >
+                        <X class="h-3 w-3" /> Remove
+                    </Button>
+                </div>
                 <input
                     v-if="conversation"
                     type="hidden"
@@ -268,6 +344,26 @@ const deleteConversation = (id: string) => {
                     :value="conversation.id"
                 />
                 <div class="flex gap-2">
+                    <input
+                        ref="documentInput"
+                        type="file"
+                        name="documents[]"
+                        multiple
+                        accept=".pdf,.docx,.txt,.md,.csv"
+                        class="hidden"
+                        @change="chooseDocuments"
+                    />
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        class="self-end"
+                        aria-label="Attach documents"
+                        title="Attach PDF, Word, text, Markdown or CSV files"
+                        @click="documentInput?.click()"
+                    >
+                        <Paperclip class="h-4 w-4" />
+                    </Button>
                     <textarea
                         name="message"
                         rows="2"
@@ -306,6 +402,15 @@ const deleteConversation = (id: string) => {
                 </div>
                 <InputError class="mt-2" :message="errors.message" />
                 <InputError class="mt-2" :message="errors.model" />
+                <InputError
+                    class="mt-2"
+                    :message="
+                        errors.documents ??
+                        Object.entries(errors).find(([field]) =>
+                            field.startsWith('documents.'),
+                        )?.[1]
+                    "
+                />
             </Form>
         </section>
     </div>

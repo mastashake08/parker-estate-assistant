@@ -94,6 +94,27 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Documents
+    |--------------------------------------------------------------------------
+    |
+    | Documents shared in a conversation are given to the model in its
+    | instructions, shortened to fit, and the read_document tool reads the
+    | rest a page at a time. Ollama ignores anything beyond its context
+    | window, so the window is raised to make room for them.
+    |
+    */
+
+    'context_tokens' => (int) env('ASSISTANT_CONTEXT_TOKENS', 16384),
+
+    'documents' => [
+        'max_files' => 5,
+        'max_kilobytes' => 20 * 1024,
+        'instructions_characters' => (int) env('ASSISTANT_DOCUMENT_CHARACTERS', 24000),
+        'page_characters' => 8000,
+    ],
+
     'mcp' => [
         'stdio_enabled' => (bool) env('ASSISTANT_MCP_STDIO', true),
         'timeout' => (float) env('ASSISTANT_MCP_TIMEOUT', 30),

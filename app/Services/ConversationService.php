@@ -25,6 +25,7 @@ class ConversationService
     public function __construct(
         protected ConversationStore $store,
         protected WebSources $webSources,
+        protected DocumentService $documents,
     ) {}
 
     /**
@@ -135,6 +136,8 @@ class ConversationService
             $conversation->messages()->delete();
             $conversation->delete();
         });
+
+        $this->documents->deleteForConversation($conversation->id);
     }
 
     /**

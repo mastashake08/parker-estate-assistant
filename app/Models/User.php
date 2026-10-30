@@ -69,6 +69,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Get the documents the user has shared with the assistant.
+     *
+     * @return HasMany<Document, $this>
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(Document::class);
+    }
+
+    /**
      * Get the tools the user has switched off.
      *
      * @return HasMany<DisabledTool, $this>
