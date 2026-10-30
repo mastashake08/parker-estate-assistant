@@ -1,0 +1,121 @@
+# Parker Estate Assistant
+
+A personal AI assistant that runs on local models through [Ollama](https://ollama.com). It remembers your conversations, can use tools from any [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server you connect, follows reusable skills you write, and can search and read the web through a headless browser.
+
+Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.com/laravel/ai).
+
+## Features
+
+- **Chat with memory**: every conversation is stored, and the model is sent the earlier messages each time you continue one.
+- **MCP servers**: connect local (stdio) or remote (HTTP) MCP servers. Their tools become available to the assistant automatically. Environment variables and headers are encrypted at rest.
+- **Tools**: switch any built-in or MCP tool on or off. Built-in tools:
+  - `web_search`: searches DuckDuckGo in headless Chrome and returns titles, URLs and snippets.
+  - `web_fetch`: opens a page in headless Chrome (so JavaScript-rendered content works) and returns its text. It only reaches public addresses.
+  - `current_date_time`: the current date and time in any timezone.
+- **Skills**: named instructions the assistant loads on demand when a task matches the skill's description.
+
+## Requirements
+
+- Docker (the app runs in [Laravel Sail](https://laravel.com/docs/sail))
+- [Ollama](https://ollama.com) running on the host, with at least one model pulled. Pick a model that supports tool calling, such as `llama3.1:8b` or `qwen2.5:7b`.
+
+## Getting started
+
+```bash
+cp .env.example .env
+composer install
+vendor/bin/sail up -d
+vendor/bin/sail artisan key:generate
+vendor/bin/sail artisan migrate
+vendor/bin/sail npm install
+vendor/bin/sail npm run dev
+```
+
+Pull a model and point the app at it:
+
+```bash
+ollama pull llama3.1
+# then in .env:
+ASSISTANT_MODEL=llama3.1
+```
+
+Register an account, then open **Chat** from the sidebar.
+
+## Configuration
+
+Most settings live in [`config/assistant.php`](config/assistant.php) and can be set from `.env`:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AI_PROVIDER` | `ollama` | Provider from `config/ai.php` |
+| `OLLAMA_URL` | `http://host.docker.internal:11434` | Where Ollama is listening (from inside Sail) |
+| `ASSISTANT_MODEL` | `llama3.1` | The model the assistant talks to |
+| `ASSISTANT_INSTRUCTIONS` | (built in) | The system prompt |
+| `ASSISTANT_MEMORY_MESSAGES` | `50` | Earlier messages sent back with each prompt |
+| `ASSISTANT_MCP_STDIO` | `true` | Allow local (stdio) MCP servers |
+| `ASSISTANT_MCP_TIMEOUT` | `30` | Seconds to wait for an MCP server |
+| `BROWSER_ENDPOINT` | `ws://chrome:3000` | Remote headless Chrome; leave empty to launch a local Chrome |
+| `BROWSER_CHROME_BINARY` | (auto-detected) | Path to Chrome when launching locally |
+| `BROWSER_TIMEOUT` | `30` | Seconds to wait for a page to load |
+| `WEB_SEARCH_URL` | DuckDuckGo HTML | Search URL; `%s` is replaced with the query |
+| `WEB_SEARCH_RESULTS` | `5` | Default number of search results (max 10) |
+| `WEB_FETCH_MAX_CHARACTERS` | `20000` | Page text is truncated after this many characters |
+
+> Don't set `CHROME_PATH` in `.env`. The Chrome library reads it directly, even when it's empty. Use `BROWSER_CHROME_BINARY` instead.
+
+### Headless browser
+
+Under Sail, the `chrome` service in [`compose.yaml`](compose.yaml) runs [browserless/chromium](https://github.com/browserless/browserless) and the app connects to it at `ws://chrome:3000`. Outside Docker (for example with Herd), set `BROWSER_ENDPOINT=` and the Chrome installed on the machine is launched instead.
+
+## Security notes
+
+- **Local MCP servers run commands on the host.** Anyone who can sign in can add one. If anyone but you can reach the app, set `ASSISTANT_MCP_STDIO=false`.
+- **`web_fetch` refuses non-public addresses.** That covers `localhost`, private ranges, cloud metadata and Docker service names, so the model can't be steered into reading internal services. If a public page redirects somewhere private, the content is withheld. The browser still makes that redirected request.
+- **Conversations, MCP servers, skills and tool settings are per user.** Other users' records return 404.
+
+## Architecture
+
+Controllers are thin. They validate with form requests, authorize with policies, and hand everything else to a service.
+
+```
+app/
+├── Ai/
+│   ├── Agents/EstateAssistant.php   # The agent: instructions, tools, skills, conversation memory
+│   └── Tools/                       # Built-in tools (CurrentDateTime, WebSearch, WebFetch)
+├── Http/Controllers/Assistant/      # Chat, MCP servers, tools, skills
+├── Models/                          # McpServer, Skill, DisabledTool
+└── Services/
+    ├── AssistantService.php         # Builds the agent for a user and sends a message
+    ├── ConversationService.php      # Lists, shows and deletes a user's conversations
+    ├── McpServerService.php         # MCP server CRUD and tool discovery
+    ├── SkillService.php             # Skill CRUD; converts skills for the agent
+    ├── ToolService.php              # Tool catalog, on/off switches, enabled tools for a user
+    ├── WebFetchService.php          # Public-only page fetching
+    ├── WebSearchService.php         # Search results parsing
+    ├── Browser/                     # Browser contract + headless Chrome implementation
+    └── Mcp/                         # MCP connector contract + laravel/mcp client implementation
+```
+
+Tools are identified by a key: `builtin:{name}` for built-in tools and `mcp:{server id}:{tool name}` for MCP tools. Tools are enabled by default, and switching one off stores a row in `disabled_tools`.
+
+### Adding a built-in tool
+
+```bash
+vendor/bin/sail artisan make:tool MyTool
+```
+
+Implement the tool, then add its class to the `tools` array in `config/assistant.php`. It will show up on the Tools page and be given to the agent.
+
+## Testing
+
+```bash
+vendor/bin/sail artisan test
+```
+
+The model, MCP servers and browser are all faked in tests, so the suite needs no network, Ollama or Chrome. Outside Sail, you can run it against in-memory SQLite:
+
+```bash
+DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test
+```
+
+Before pushing, `composer test` runs Pint, PHPStan and the test suite.
