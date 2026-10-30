@@ -1,6 +1,8 @@
 <?php
 
 use App\Ai\Tools\CurrentDateTime;
+use App\Ai\Tools\SendEmail;
+use App\Ai\Tools\SendSms;
 use App\Ai\Tools\WebFetch;
 use App\Ai\Tools\WebSearch;
 
@@ -50,6 +52,8 @@ return [
         CurrentDateTime::class,
         WebSearch::class,
         WebFetch::class,
+        SendEmail::class,
+        SendSms::class,
     ],
 
     /*

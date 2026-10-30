@@ -16,6 +16,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
     - `web_search`: searches DuckDuckGo in headless Chrome and returns titles, URLs and snippets.
     - `web_fetch`: opens a page in headless Chrome (so JavaScript-rendered content works) and returns its text. It only reaches public addresses.
     - `current_date_time`: the current date and time in any timezone.
+- **Email and text messages that need your approval**: `send_email` (Laravel Mail) and `send_sms` (Twilio, through Laravel Notifications) never send on their own. The reply pauses and shows exactly what will be sent, with **Approve** and **Deny** buttons, and continues once you decide.
 - **Skills**: named instructions the assistant loads on demand when a task matches the skill's description.
 
 ## Requirements
@@ -78,6 +79,10 @@ Under Sail, the `chrome` service in [`compose.yaml`](compose.yaml) runs [browser
 Sending a message queues a `StreamAssistantReply` job and redirects straight back to the chat. The job streams the reply from the model and broadcasts each piece as an `assistant.stream` event on the user's private `App.Models.User.{id}` channel. It finishes with a `reply_complete` event, sent once the exchange has been saved, and the chat page then reloads the stored messages.
 
 This needs both a **queue worker** and the **Reverb server** running. `composer run dev` starts both. Without a worker, messages are accepted but no reply ever arrives. Reverb listens on port 8080, which `compose.yaml` publishes from the app container.
+
+### Email and SMS
+
+`send_email` uses the app's mailer, so set `MAIL_MAILER` and its settings in `.env` (with the default `log` mailer, emails are only written to `storage/logs/laravel.log`). `send_sms` needs `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and a `TWILIO_FROM` number, and numbers must be in international format (`+15025550123`). Twilio errors, including unverified numbers on trial accounts, are reported back to the assistant instead of being ignored.
 
 ## Security notes
 

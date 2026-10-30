@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Assistant\ConversationApprovalController;
 use App\Http\Controllers\Assistant\ConversationController;
 use App\Http\Controllers\Assistant\ConversationMessageController;
 use App\Http\Controllers\Assistant\McpServerController;
@@ -13,6 +14,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('throttle:30,1')
         ->name('chat.messages.store');
     Route::get('chat/{conversation}', [ConversationController::class, 'show'])->name('chat.show');
+    Route::post('chat/{conversation}/approvals', [ConversationApprovalController::class, 'store'])
+        ->middleware('throttle:30,1')
+        ->name('chat.approvals.store');
     Route::delete('chat/{conversation}', [ConversationController::class, 'destroy'])->name('chat.destroy');
 
     Route::resource('settings/mcp-servers', McpServerController::class)

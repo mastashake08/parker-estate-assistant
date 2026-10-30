@@ -32,7 +32,7 @@ test('sending a message starts a conversation and queues the reply', function ()
 
     Queue::assertPushed(StreamAssistantReply::class, fn (StreamAssistantReply $job) => $job->user->is($user)
         && $job->conversationId === $conversation->id
-        && $job->message === 'What is on the calendar today?');
+        && $job->input === 'What is on the calendar today?');
 });
 
 test('the pending message is flashed so the chat can show it before the reply is stored', function () {
