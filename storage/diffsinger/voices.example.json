@@ -1,0 +1,10 @@
+[
+    {
+        "name": "My voice",
+        "acoustic": "my_voice_acoustic",
+        "variance": "my_voice_variance",
+        "language": "en",
+        "speaker": null,
+        "vowels": null
+    }
+]

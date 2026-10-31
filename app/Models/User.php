@@ -89,6 +89,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Get the speech, music and MIDI the user has made in the audio studio.
+     *
+     * @return HasMany<AudioGeneration, $this>
+     */
+    public function audioGenerations(): HasMany
+    {
+        return $this->hasMany(AudioGeneration::class);
+    }
+
+    /**
      * Get the tools the user has switched off.
      *
      * @return HasMany<DisabledTool, $this>
