@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import {
+    AlarmClock,
     BookOpen,
     FolderGit2,
     LayoutGrid,
@@ -25,6 +26,7 @@ import {
 import { dashboard } from '@/routes';
 import { index as chat } from '@/routes/chat';
 import { index as mcpServers } from '@/routes/mcp-servers';
+import { index as routines } from '@/routes/routines';
 import { index as skills } from '@/routes/skills';
 import { index as tools } from '@/routes/tools';
 import type { NavItem } from '@/types';
@@ -54,6 +56,11 @@ const mainNavItems: NavItem[] = [
         title: 'Skills',
         href: skills(),
         icon: Sparkles,
+    },
+    {
+        title: 'Routines',
+        href: routines(),
+        icon: AlarmClock,
     },
 ];
 

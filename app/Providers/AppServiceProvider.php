@@ -12,6 +12,7 @@ use App\Services\Search\SearchEngine;
 use App\Services\Search\SearxngSearch;
 use App\Services\Search\TavilySearch;
 use Carbon\CarbonImmutable;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -49,6 +50,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Routines run from the scheduler, so `composer run dev` starts it alongside the queue.
+        if ($this->app->runningInConsole()) {
+            DevCommands::artisan('schedule:work', 'schedule');
+        }
     }
 
     /**

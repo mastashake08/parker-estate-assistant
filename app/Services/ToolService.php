@@ -6,6 +6,7 @@ use App\Models\McpServer;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Laravel\Ai\Contracts\Approvable;
 use Laravel\Ai\Contracts\Tool;
 use Laravel\Mcp\Client\Exceptions\AuthorizationRequiredException;
 use Laravel\Mcp\Client\Primitives\Tool as McpTool;
@@ -23,7 +24,7 @@ class ToolService
      * Describe every tool available to the user and whether it is enabled.
      *
      * @return array{
-     *     builtin: array<int, array{key: string, name: string, description: string, enabled: bool}>,
+     *     builtin: array<int, array{key: string, name: string, description: string, enabled: bool, needsApproval: bool}>,
      *     servers: array<int, array{id: int, name: string, error: string|null, signInRequired: bool, tools: array<int, array{key: string, name: string, description: string, enabled: bool}>}>
      * }
      */
@@ -37,6 +38,7 @@ class ToolService
                 'name' => Str::after($key, 'builtin:'),
                 'description' => (string) $tool->description(),
                 'enabled' => ! $disabled->contains($key),
+                'needsApproval' => $tool instanceof Approvable,
             ])
             ->values()
             ->all();
@@ -102,6 +104,39 @@ class ToolService
                 return [];
             }
         });
+
+        return [...$builtin, ...$mcp];
+    }
+
+    /**
+     * Get the tools with the given keys, whether or not they are switched on
+     * for the chat. Routines choose their own tools this way.
+     *
+     * An MCP server that cannot be reached is reported and skipped.
+     *
+     * @param  list<string>  $keys
+     * @return list<Tool|McpTool>
+     */
+    public function toolsFor(User $user, array $keys): array
+    {
+        $keys = collect($keys);
+
+        $builtin = $this->builtinTools()
+            ->filter(fn (Tool $tool, string $key) => $keys->contains($key))
+            ->values();
+
+        $mcp = $this->servers->enabled($user)
+            ->filter(fn (McpServer $server) => $keys->contains(fn (string $key) => str_starts_with($key, $server->toolKey(''))))
+            ->flatMap(function (McpServer $server) use ($keys) {
+                try {
+                    return $this->servers->tools($server)
+                        ->filter(fn (McpTool $tool) => $keys->contains($server->toolKey($tool->name)));
+                } catch (Throwable $exception) {
+                    report($exception);
+
+                    return [];
+                }
+            });
 
         return [...$builtin, ...$mcp];
     }
