@@ -40,8 +40,7 @@ beforeEach(function () {
  */
 function fakeEngines(array $overrides = []): void
 {
-    Http::fake([
-        ...$overrides,
+    $engines = [
         'phonon:8880/v1/models' => Http::response(['object' => 'list', 'data' => [['id' => 'phonon-31m-en', 'languages' => ['en']]]]),
         'phonon:8880/v1/audio/voices' => Http::response(['voices' => ['Toby', 'Ava'], 'aliases' => []]),
         'phonon:8880/v1/audio/speech' => Http::response(str_repeat("\0\0", 24000)),
@@ -56,7 +55,10 @@ function fakeEngines(array $overrides = []): void
         ]),
         'diffsinger:8000/render' => Http::response(Wav::fromPcm16(str_repeat("\0\0", 48000), 24000)),
         '*/api/tags' => Http::response(['models' => [['name' => 'llama3:latest']]]),
-    ]);
+    ];
+
+    // Overrides come first, so they match before the engines' wildcards.
+    Http::fake([...$overrides, ...array_diff_key($engines, $overrides)]);
 }
 
 function generation(string $kind, array $attributes = []): AudioGeneration

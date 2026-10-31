@@ -27,7 +27,7 @@ class BrowserGenerationController extends Controller
         }
 
         try {
-            $this->audio->storeBrowserMusic($request->user(), $request->safe()->except('audio'), $file);
+            $this->audio->storeBrowserMusic($request->user(), $request->music(), $file);
         } catch (AudioServiceException $exception) {
             throw ValidationException::withMessages(['audio' => $exception->getMessage()]);
         }

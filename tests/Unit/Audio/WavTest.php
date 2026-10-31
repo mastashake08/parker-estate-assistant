@@ -26,3 +26,9 @@ test('a streamed wav without a data length is read to the end of the file', func
 test('other files are refused', function () {
     Wav::duration('ID3 not a wav file');
 })->throws(InvalidArgumentException::class);
+
+test('a file that ends inside its format chunk is refused', function () {
+    $wav = Wav::fromPcm16(str_repeat("\0\0", 100), 24000);
+
+    Wav::duration(substr($wav, 0, 26));
+})->throws(InvalidArgumentException::class, 'The audio is not a WAV file.');

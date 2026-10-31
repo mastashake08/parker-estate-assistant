@@ -1,6 +1,6 @@
 <?php
 
-$list = fn (?string $value): array => array_values(array_filter(array_map(trim(...), explode(',', (string) $value))));
+$list = fn (string|bool|null $value): array => array_values(array_filter(array_map(trim(...), explode(',', (string) $value))));
 
 return [
 

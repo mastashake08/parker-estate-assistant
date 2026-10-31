@@ -21,7 +21,7 @@ class AudioGenerationController extends Controller
      */
     public function store(StoreAudioGenerationRequest $request): RedirectResponse
     {
-        $this->audio->queue($request->user(), $request->validated());
+        $this->audio->queue($request->user(), $request->generation());
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Generating. It will appear in your library when it is ready.')]);
 

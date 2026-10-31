@@ -41,10 +41,10 @@ class Wav
 
         while ($offset + 8 <= strlen($wav)) {
             $id = substr($wav, $offset, 4);
-            $size = unpack('V', substr($wav, $offset + 4, 4))[1];
+            $size = self::uint32($wav, $offset + 4);
 
             if ($id === 'fmt ') {
-                $byteRate = unpack('V', substr($wav, $offset + 16, 4))[1];
+                $byteRate = self::uint32($wav, $offset + 16);
             }
 
             if ($id === 'data') {
@@ -61,5 +61,21 @@ class Wav
         }
 
         throw new InvalidArgumentException('The WAV file has no audio data.');
+    }
+
+    /**
+     * Read a little-endian 32-bit number from the bytes at the offset.
+     *
+     * @throws InvalidArgumentException When the file ends before the number does.
+     */
+    protected static function uint32(string $wav, int $offset): int
+    {
+        $number = strlen($wav) >= $offset + 4 ? unpack('V', $wav, $offset) : false;
+
+        if ($number === false) {
+            throw new InvalidArgumentException('The audio is not a WAV file.');
+        }
+
+        return $number[1];
     }
 }

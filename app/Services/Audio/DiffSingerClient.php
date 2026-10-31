@@ -28,7 +28,28 @@ class DiffSingerClient
             return ['online' => false, 'voices' => [], 'error' => $this->reason($exception)];
         }
 
-        return ['online' => true, 'voices' => array_values(array_filter((array) $voices, is_array(...))), 'error' => null];
+        return ['online' => true, 'voices' => array_values(array_filter(array_map($this->voiceFrom(...), (array) $voices))), 'error' => null];
+    }
+
+    /**
+     * One voice as the service describes it, or null if it has no name.
+     *
+     * @return array{name: string, language: string|null, languages: list<string>, speakers: list<string>, speaker: string|null, variance: bool}|null
+     */
+    protected function voiceFrom(mixed $voice): ?array
+    {
+        if (! is_array($voice) || ! is_string($voice['name'] ?? null)) {
+            return null;
+        }
+
+        return [
+            'name' => $voice['name'],
+            'language' => is_string($voice['language'] ?? null) ? $voice['language'] : null,
+            'languages' => array_values(array_filter((array) ($voice['languages'] ?? []), is_string(...))),
+            'speakers' => array_values(array_filter((array) ($voice['speakers'] ?? []), is_string(...))),
+            'speaker' => is_string($voice['speaker'] ?? null) ? $voice['speaker'] : null,
+            'variance' => (bool) ($voice['variance'] ?? false),
+        ];
     }
 
     /**
@@ -47,7 +68,7 @@ class DiffSingerClient
         }
 
         foreach ($status['voices'] as $voice) {
-            if (($voice['name'] ?? null) === $name) {
+            if ($voice['name'] === $name) {
                 return $voice;
             }
         }
@@ -80,8 +101,11 @@ class DiffSingerClient
 
                 return [
                     'language' => $dictionary['language'] ?? $language,
-                    'entries' => (array) ($dictionary['entries'] ?? []),
-                    'vowels' => array_values((array) ($dictionary['vowels'] ?? [])),
+                    'entries' => array_map(
+                        fn (mixed $phonemes): array => array_values(array_filter((array) $phonemes, is_string(...))),
+                        (array) ($dictionary['entries'] ?? []),
+                    ),
+                    'vowels' => array_values(array_filter((array) ($dictionary['vowels'] ?? []), is_string(...))),
                 ];
             },
         );

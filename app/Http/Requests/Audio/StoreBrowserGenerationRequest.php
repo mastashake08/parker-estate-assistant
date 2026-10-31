@@ -21,4 +21,20 @@ class StoreBrowserGenerationRequest extends FormRequest
             'audio' => ['required', 'file', 'mimetypes:audio/wav,audio/x-wav,audio/wave,audio/vnd.wave', 'max:'.config('audio.music.upload_kilobytes')],
         ];
     }
+
+    /**
+     * The validated details of the music, as the audio service takes them.
+     *
+     * @return array{prompt: string, duration: int, device: string|null}
+     */
+    public function music(): array
+    {
+        $validated = $this->safe();
+
+        return [
+            'prompt' => $validated->string('prompt')->value(),
+            'duration' => $validated->integer('duration'),
+            'device' => $validated->filled('device') ? $validated->string('device')->value() : null,
+        ];
+    }
 }

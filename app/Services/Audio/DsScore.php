@@ -265,7 +265,7 @@ class DsScore
         $lookup = [];
 
         foreach ($entries as $word => $phonemes) {
-            $lookup[mb_strtolower((string) $word)] ??= array_values($phonemes);
+            $lookup[mb_strtolower((string) $word)] ??= $phonemes;
         }
 
         return $lookup;

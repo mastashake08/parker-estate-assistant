@@ -27,7 +27,7 @@ class PhononClient
      */
     public function servers(): array
     {
-        return array_map($this->describe(...), config('audio.speech.servers'));
+        return array_values(array_map($this->describe(...), config()->array('audio.speech.servers')));
     }
 
     /**

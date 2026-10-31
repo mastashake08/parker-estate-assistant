@@ -22,7 +22,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
-use Laravel\Ai\Responses\StructuredAgentResponse;
 use Throwable;
 
 /**
@@ -62,7 +61,7 @@ class AudioService
         $kind = AudioKind::from($attributes['kind']);
 
         $options = match ($kind) {
-            AudioKind::Speech => ['server' => $attributes['server'], 'voice' => $attributes['voice'] ?? null],
+            AudioKind::Speech => ['server' => $attributes['server'] ?? null, 'voice' => $attributes['voice'] ?? null],
             AudioKind::Music => ['duration' => (int) ($attributes['duration'] ?? 10)],
             AudioKind::Midi => ['bars' => (int) ($attributes['bars'] ?? 8), 'tempo' => $attributes['tempo'] ?? null],
             AudioKind::Vocals => [
@@ -308,10 +307,6 @@ class AudioService
             throw new AudioServiceException("The language model ({$generation->model}) could not compose the MIDI. Check that it is installed in Ollama.", previous: $exception);
         }
 
-        if (! $response instanceof StructuredAgentResponse) {
-            throw new AudioServiceException('The language model did not answer with the MIDI it was asked for.');
-        }
-
         $composition = $this->normalize($response->toArray(), $bars * $beatsPerBar);
 
         if ($composition['stems'] === []) {
@@ -370,10 +365,6 @@ class AudioService
             throw new AudioServiceException("The language model ({$generation->model}) could not write the lyrics. Check that it is installed in Ollama.", previous: $exception);
         }
 
-        if (! $response instanceof StructuredAgentResponse) {
-            throw new AudioServiceException('The language model did not answer with the lyrics it was asked for.');
-        }
-
         $song = $this->normalizeLyrics($response->toArray(), $bars * $beatsPerBar);
         $tempo = (int) ($tempo ?: $song['tempo']);
 
@@ -385,7 +376,7 @@ class AudioService
 
         // Keep the score first, so it can be downloaded even if singing fails.
         $scorePath = "audio/{$generation->user_id}/".Str::uuid7().'.ds';
-        Storage::disk(config('audio.disk'))->put($scorePath, json_encode($score['segments'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        Storage::disk(config('audio.disk'))->put($scorePath, json_encode($score['segments'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR));
         $generation->update(['score_path' => $scorePath]);
 
         $wav = $this->diffSinger->render($voice['name'], $score['segments'], $generation->option('speaker') ?: null);

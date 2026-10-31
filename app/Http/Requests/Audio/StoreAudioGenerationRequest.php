@@ -56,4 +56,28 @@ class StoreAudioGenerationRequest extends FormRequest
             'voice.required_if' => 'Choose a singing voice.',
         ];
     }
+
+    /**
+     * The validated generation, as the audio service takes it.
+     *
+     * @return array{kind: string, prompt: string, server: string|null, voice: string|null, speaker: string|null, model: string|null, duration: int|null, bars: int|null, tempo: int|null}
+     */
+    public function generation(): array
+    {
+        $validated = $this->safe();
+        $string = fn (string $key): ?string => $validated->filled($key) ? $validated->string($key)->value() : null;
+        $integer = fn (string $key): ?int => $validated->filled($key) ? $validated->integer($key) : null;
+
+        return [
+            'kind' => $validated->string('kind')->value(),
+            'prompt' => $validated->string('prompt')->value(),
+            'server' => $string('server'),
+            'voice' => $string('voice'),
+            'speaker' => $string('speaker'),
+            'model' => $string('model'),
+            'duration' => $integer('duration'),
+            'bars' => $integer('bars'),
+            'tempo' => $integer('tempo'),
+        ];
+    }
 }
