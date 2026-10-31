@@ -14,7 +14,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 - **MCP servers**: connect local (stdio) or remote (HTTP) MCP servers. Their tools become available to the assistant automatically. Each server's tool list is cached, so a local server only starts when one of its tools is used; **Refresh tools** on the Tools page lists them again. Environment variables and headers are encrypted at rest.
 - **MCP sign-in (OAuth)**: remote servers that require signing in get a **Sign in** button. The app finds the server's authorization server, registers itself if needed, and signs in with PKCE. Tokens are stored encrypted and refreshed automatically before they expire.
 - **Tools**: switch any built-in or MCP tool on or off. Built-in tools:
-    - `web_search`: searches DuckDuckGo in headless Chrome and returns titles, URLs and snippets.
+    - `web_search`: searches the web and returns titles, URLs and snippets. It uses DuckDuckGo in headless Chrome by default, or SearXNG, Brave Search or Tavily (see [Web search engines](#web-search-engines)).
     - `web_fetch`: opens a page in headless Chrome (so JavaScript-rendered content works) and returns its text. It only reaches public addresses.
     - `current_date_time`: the current date and time in any timezone.
 - **Document analysis**: attach PDF, Word (.docx), text, Markdown or CSV files to a message (up to 5, 20 MB each). Their text is given to the assistant for the rest of the conversation, and long documents can be read in full with the `read_document` tool.
@@ -70,7 +70,11 @@ Most settings live in [`config/assistant.php`](config/assistant.php) and can be 
 | `BROWSER_ENDPOINT`              | `ws://chrome:3000/`                 | Remote headless Chrome; leave empty to launch a local Chrome |
 | `BROWSER_CHROME_BINARY`         | (auto-detected)                     | Path to Chrome when launching locally                        |
 | `BROWSER_TIMEOUT`               | `30`                                | Seconds to wait for a page to load                           |
-| `WEB_SEARCH_URL`                | DuckDuckGo HTML                     | Search URL; `%s` is replaced with the query                  |
+| `WEB_SEARCH_ENGINE`             | `duckduckgo`                        | `duckduckgo`, `searxng`, `brave` or `tavily`                 |
+| `WEB_SEARCH_URL`                | DuckDuckGo HTML                     | DuckDuckGo search URL; `%s` is replaced with the query       |
+| `SEARXNG_URL`                   | (none)                              | Your SearXNG instance, such as `http://searxng:8080`         |
+| `BRAVE_SEARCH_API_KEY`          | (none)                              | Brave Search API key                                         |
+| `TAVILY_API_KEY`                | (none)                              | Tavily API key                                               |
 | `WEB_SEARCH_RESULTS`            | `5`                                 | Default number of search results (max 10)                    |
 | `WEB_FETCH_MAX_CHARACTERS`      | `20000`                             | Page text is truncated after this many characters            |
 
@@ -79,6 +83,17 @@ Most settings live in [`config/assistant.php`](config/assistant.php) and can be 
 ### Headless browser
 
 Under Sail, the `chrome` service in [`compose.yaml`](compose.yaml) runs [browserless/chromium](https://github.com/browserless/browserless) and the app connects to it at `ws://chrome:3000/`. Outside Docker (for example with Herd), set `BROWSER_ENDPOINT=` and the Chrome installed on the machine is launched instead.
+
+### Web search engines
+
+`web_search` goes through the engine named by `WEB_SEARCH_ENGINE`:
+
+- **`duckduckgo`** (default): renders DuckDuckGo's HTML results page in the headless browser. No account is needed, but it isn't an official API, may show CAPTCHAs under heavy use, and isn't meant for heavy automated use.
+- **`searxng`**: a [SearXNG](https://docs.searxng.org/) metasearch instance you host. Set `SEARXNG_URL`, and allow the JSON format in its `settings.yml` (`search: formats: [html, json]`), or it answers with HTTP 403.
+- **`brave`**: the [Brave Search API](https://brave.com/search/api/). Set `BRAVE_SEARCH_API_KEY`.
+- **`tavily`**: the [Tavily](https://tavily.com) search API, built for AI agents. Set `TAVILY_API_KEY`.
+
+Every engine returns the same Markdown links, so the Sources list works with all of them. When an engine is unreachable, is missing its key, or answers with an error, the assistant is told why instead of the reply failing.
 
 ### Live replies (Reverb)
 
@@ -145,7 +160,8 @@ app/
     ├── SkillService.php             # Skill CRUD; converts skills for the agent
     ├── ToolService.php              # Tool catalog, on/off switches, enabled tools for a user
     ├── WebFetchService.php          # Public-only page fetching
-    ├── WebSearchService.php         # Search results parsing
+    ├── WebSearchService.php         # Formats search results for the model
+    ├── Search/                      # SearchEngine contract + DuckDuckGo, SearXNG, Brave and Tavily
     ├── Browser/                     # Browser contract + headless Chrome implementation
     └── Mcp/                         # MCP connector contract + laravel/mcp client implementation
 ```

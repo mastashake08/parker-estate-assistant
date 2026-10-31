@@ -66,8 +66,11 @@ return [
     | of a remote Chrome (the "chrome" Sail service), or leave it empty to
     | launch the Chrome installed on this machine (BROWSER_CHROME_BINARY if needed).
     |
-    | The search URL receives the URL-encoded query in place of "%s" and
-    | must return DuckDuckGo's HTML results markup.
+    | The search engine is one of "duckduckgo" (the default: DuckDuckGo's
+    | HTML results page, rendered in the browser; no account needed),
+    | "searxng" (a SearXNG instance with the JSON format enabled), "brave"
+    | (Brave Search API) or "tavily" (Tavily API). For DuckDuckGo, the
+    | search URL receives the URL-encoded query in place of "%s".
     |
     */
 
@@ -79,7 +82,11 @@ return [
     ],
 
     'web' => [
+        'search_engine' => env('WEB_SEARCH_ENGINE', 'duckduckgo'),
         'search_url' => env('WEB_SEARCH_URL', 'https://html.duckduckgo.com/html/?q=%s'),
+        'searxng_url' => env('SEARXNG_URL'),
+        'brave_api_key' => env('BRAVE_SEARCH_API_KEY'),
+        'tavily_api_key' => env('TAVILY_API_KEY'),
         'search_results' => (int) env('WEB_SEARCH_RESULTS', 5),
         'max_characters' => (int) env('WEB_FETCH_MAX_CHARACTERS', 20000),
     ],
