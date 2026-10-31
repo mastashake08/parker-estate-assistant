@@ -20,6 +20,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 - **Document analysis**: attach PDF, Word (.docx), text, Markdown or CSV files to a message (up to 5, 20 MB each). Their text is given to the assistant for the rest of the conversation, and long documents can be read in full with the `read_document` tool.
 - **Email and text messages that need your approval**: `send_email` (Laravel Mail) and `send_sms` (Twilio, through Laravel Notifications) never send on their own. The reply pauses and shows exactly what will be sent, with **Approve** and **Deny** buttons, and continues once you decide.
 - **Read aloud**: press **Listen** under any reply, or turn on the speaker button next to Send to hear each new reply. It uses the browser's built-in speech synthesis, so it works offline and nothing is sent anywhere. Choose the voice and speed under **Settings → Appearance**; they're saved per device.
+- **Routines**: schedule the assistant to do something on its own, such as a morning brief at 8 AM on weekdays. Each routine has its own instructions, schedule and timezone, model, and the tools it may use. Every run is saved as a chat, and the result can also be emailed or texted to you. See [Routines](#routines).
 - **Skills**: named instructions the assistant loads on demand when a task matches the skill's description.
 
 ## Requirements
@@ -100,7 +101,15 @@ Rebuild the assets (`vendor/bin/sail npm run build`) or restart `composer run de
 
 Remote MCP servers that answer with `401` show **Sign in** on the MCP servers and Tools pages. Signing in uses the OAuth support in `laravel/mcp`: it reads the server's protected resource metadata, registers the app with dynamic client registration (or uses the client ID and secret entered under **OAuth sign-in** on the server's form), and sends you to the provider's sign-in page. When no scopes are entered, it asks for the scopes the server advertises. The provider returns you to `/settings/mcp-servers/{id}/oauth/callback` on the address you opened the app at. Some providers, such as WorkOS AuthKit, only accept `https` or `localhost` return addresses, so sign in from `http://localhost` when the app has no `https` address. Once signed in, the tokens work from any address. Changing a server's URL or client signs you out.
 
-### Documents
+### Routines
+
+A routine is a prompt the assistant runs on a schedule: every day, on weekdays, weekly, every few hours, or a custom cron expression, in the routine's timezone (so 8:00 AM stays 8:00 AM across daylight saving changes). Manage them under **Routines** in the sidebar, where **Run now** runs one immediately and each routine lists its recent runs with links to their chats.
+
+- **Tools**: a routine only gets the tools ticked on it, whether or not they're switched on for the chat.
+- **Approvals**: `send_email` and `send_sms` still need approval, so the run pauses in its chat until you decide. Tick **Send emails and texts without asking me** on a routine to approve them automatically; the assistant can then message anyone, including someone it gets wrong.
+- **Delivery**: every run is a new chat titled with the routine's name and time. The reply can also be emailed to your account's address and texted to a number on the routine (Twilio, shortened to fit). If a run is waiting for approval, you're told that instead.
+
+Routines need the **scheduler** running alongside the queue worker. `composer run dev` starts `schedule:work`; in production, run `php artisan schedule:run` every minute from cron. The scheduler queues due routines with `routines:run-due`, and the queue worker runs them.
 
 The text is read when you upload: PDFs with `smalot/pdfparser`, Word files from their XML, and everything else as plain text. Scanned PDFs (pictures of text) have no text to read and are rejected. Files are kept on the private `local` disk and deleted with their conversation.
 

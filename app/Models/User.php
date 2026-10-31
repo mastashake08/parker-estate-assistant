@@ -79,6 +79,16 @@ class User extends Authenticatable implements PasskeyUser
     }
 
     /**
+     * Get the routines the user has scheduled.
+     *
+     * @return HasMany<Routine, $this>
+     */
+    public function routines(): HasMany
+    {
+        return $this->hasMany(Routine::class);
+    }
+
+    /**
      * Get the tools the user has switched off.
      *
      * @return HasMany<DisabledTool, $this>

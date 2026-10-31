@@ -105,3 +105,53 @@ export type Conversation = {
     approvals: PendingApproval[];
     documents: ConversationDocument[];
 };
+
+export type RoutineFrequency =
+    | 'daily'
+    | 'weekdays'
+    | 'weekly'
+    | 'hourly'
+    | 'custom';
+
+export type RoutineRunStatus =
+    | 'running'
+    | 'completed'
+    | 'waiting_for_approval'
+    | 'failed';
+
+export type RoutineRun = {
+    id: number;
+    status: RoutineRunStatus;
+    error: string | null;
+    conversation_id: string | null;
+    created_at: string;
+    finished_at: string | null;
+};
+
+export type Routine = {
+    id: number;
+    name: string;
+    instructions: string;
+    frequency: RoutineFrequency;
+    time: string | null;
+    day_of_week: number | null;
+    every_hours: number | null;
+    cron: string;
+    timezone: string;
+    model: string | null;
+    tools: string[];
+    auto_approve: boolean;
+    deliver_email: boolean;
+    deliver_sms: boolean;
+    sms_to: string | null;
+    enabled: boolean;
+    next_run_at: string | null;
+    last_run_at: string | null;
+    schedule: string;
+    runs: RoutineRun[];
+};
+
+export type ToolCatalog = {
+    builtin: (AssistantTool & { needsApproval: boolean })[];
+    servers: McpServerTools[];
+};

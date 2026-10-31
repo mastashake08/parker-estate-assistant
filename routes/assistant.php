@@ -5,6 +5,8 @@ use App\Http\Controllers\Assistant\ConversationController;
 use App\Http\Controllers\Assistant\ConversationMessageController;
 use App\Http\Controllers\Assistant\McpServerController;
 use App\Http\Controllers\Assistant\McpServerOAuthController;
+use App\Http\Controllers\Assistant\RoutineController;
+use App\Http\Controllers\Assistant\RoutineRunController;
 use App\Http\Controllers\Assistant\SkillController;
 use App\Http\Controllers\Assistant\ToolController;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +34,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('mcp-servers.oauth.callback');
     Route::delete('settings/mcp-servers/{mcp_server}/oauth', [McpServerOAuthController::class, 'destroy'])
         ->name('mcp-servers.oauth.destroy');
+
+    Route::resource('settings/routines', RoutineController::class)
+        ->only(['index', 'store', 'update', 'destroy'])
+        ->names('routines');
+    Route::post('settings/routines/{routine}/runs', [RoutineRunController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('routines.runs.store');
 
     Route::resource('settings/skills', SkillController::class)
         ->only(['index', 'store', 'update', 'destroy'])

@@ -11,7 +11,9 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 use Laravel\Ai\Approvals\Decisions;
+use Laravel\Ai\Contracts\Tool;
 use Laravel\Ai\Streaming\Events\StreamEvent;
+use Laravel\Mcp\Client\Primitives\Tool as McpTool;
 
 class AssistantService
 {
@@ -89,17 +91,19 @@ class AssistantService
      * "reply_complete" event tells the chat the exchange has been stored.
      *
      * The input is the user's message, or their decisions on the tool calls a
-     * paused reply is waiting on, which resume it.
+     * paused reply is waiting on, which resume it. The assistant uses the
+     * user's enabled tools unless the tools are given, as routines do.
      *
      * @param  string|array<string, bool>  $input
+     * @param  list<Tool|McpTool>|null  $tools
      */
-    public function stream(User $user, string $conversationId, string|array $input): void
+    public function stream(User $user, string $conversationId, string|array $input, ?array $tools = null): void
     {
         $documents = $this->documents->forConversation($user, $conversationId);
 
         $agent = new EstateAssistant(
             tools: [
-                ...$this->tools->enabledTools($user),
+                ...($tools ?? $this->tools->enabledTools($user)),
                 ...($documents->isNotEmpty() ? [new ReadDocument($documents)] : []),
             ],
             skills: $this->skills->enabledFor($user),
