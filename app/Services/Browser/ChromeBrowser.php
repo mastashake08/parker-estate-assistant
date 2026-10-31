@@ -4,6 +4,9 @@ namespace App\Services\Browser;
 
 use HeadlessChromium\Browser as ChromiumBrowser;
 use HeadlessChromium\BrowserFactory;
+use HeadlessChromium\Communication\Connection;
+use HeadlessChromium\Communication\Socket\Wrench;
+use HeadlessChromium\Exception\BrowserConnectionFailed;
 use HeadlessChromium\Page;
 use Throwable;
 
@@ -64,7 +67,7 @@ class ChromeBrowser implements Browser
         $options = ['sendSyncDefaultTimeout' => $this->timeout * 1000];
 
         if (filled($this->endpoint)) {
-            return BrowserFactory::connectToBrowser($this->endpointUri((string) $this->endpoint), $options);
+            return $this->connect($this->endpointUri((string) $this->endpoint));
         }
 
         return (new BrowserFactory(filled($this->binary) ? $this->binary : null))->createBrowser([
@@ -73,6 +76,31 @@ class ChromeBrowser implements Browser
             'noSandbox' => true,
             'startupTimeout' => $this->timeout,
         ]);
+    }
+
+    /**
+     * Connect to a remote browser, waiting up to the timeout for it to start.
+     *
+     * Browserless launches a new Chrome for each connection and only finishes
+     * the WebSocket handshake once it is running, which can take over ten
+     * seconds on a busy machine. BrowserFactory::connectToBrowser() gives up
+     * after the WebSocket client's defaults (2 seconds to connect, 5 for the
+     * handshake), so the connection is built here with the browser's timeout.
+     */
+    protected function connect(string $uri): ChromiumBrowser
+    {
+        $client = new WebSocketClient($uri, 'http://127.0.0.1', handshakeTimeout: $this->timeout, options: [
+            'socket_options' => ['timeout_connect' => $this->timeout],
+        ]);
+
+        $connection = new Connection(new Wrench($client), sendSyncDefaultTimeout: $this->timeout * 1000);
+        $connection->connect();
+
+        if (! $connection->isConnected()) {
+            throw new BrowserConnectionFailed("The browser at {$uri} did not answer within {$this->timeout} seconds.");
+        }
+
+        return new ChromiumBrowser($connection);
     }
 
     /**
