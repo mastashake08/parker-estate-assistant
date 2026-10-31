@@ -10,6 +10,7 @@ use App\Models\RoutineRun;
 use App\Services\OllamaService;
 use App\Services\RoutineService;
 use App\Services\ToolService;
+use DateTimeZone;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -41,6 +42,8 @@ class RoutineController extends Controller
             'tools' => $this->tools->catalog($request->user()),
             'models' => $this->ollama->installedModels(),
             'defaultModel' => config('assistant.model'),
+            // The browser names some zones by aliases PHP does not know, so the page offers PHP's own.
+            'timezones' => DateTimeZone::listIdentifiers(),
         ]);
     }
 

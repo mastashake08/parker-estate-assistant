@@ -25,6 +25,7 @@ const props = defineProps<{
     tools: ToolCatalog;
     models: string[];
     defaultModel: string;
+    timezones: string[];
 }>();
 
 defineOptions({
@@ -50,8 +51,33 @@ const days = [
     'Saturday',
 ];
 
-const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-const timezones = Intl.supportedValuesOf('timeZone');
+/** The zone a name stands for in this browser, such as "America/Louisville" for "America/Kentucky/Louisville". */
+const browserName = (zone: string) => {
+    try {
+        return new Intl.DateTimeFormat('en', {
+            timeZone: zone,
+        }).resolvedOptions().timeZone;
+    } catch {
+        return null;
+    }
+};
+
+/**
+ * This browser's timezone, as one of the server's names. Browsers use some
+ * names the server does not know, so the match is by the zone they stand for.
+ */
+const defaultTimezone = (() => {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    if (props.timezones.includes(zone)) {
+        return zone;
+    }
+
+    return (
+        props.timezones.find((candidate) => browserName(candidate) === zone) ??
+        'UTC'
+    );
+})();
 
 /** Every tool a routine can use, with the server it comes from. */
 const toolGroups = computed(() => [
@@ -80,7 +106,7 @@ const blank = () => ({
     day_of_week: 1 as number | null,
     every_hours: 1 as number | null,
     cron: '',
-    timezone: browserTimezone,
+    timezone: defaultTimezone,
     model: '',
     tools: props.tools.builtin
         .filter((tool) => !tool.needsApproval)

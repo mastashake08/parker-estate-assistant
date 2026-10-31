@@ -62,6 +62,23 @@ test('users only see their own routines, described in words', function () {
         );
 });
 
+test('the page offers the timezones the server accepts', function () {
+    $this->actingAs(User::factory()->create())
+        ->get(route('routines.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('timezones', DateTimeZone::listIdentifiers())
+            ->where('timezones', fn ($zones) => collect($zones)->contains('America/Kentucky/Louisville'))
+        );
+});
+
+test('browser-only timezone names are rejected', function () {
+    // Browsers name some zones by aliases PHP does not know, such as
+    // "America/Louisville" for "America/Kentucky/Louisville".
+    $this->actingAs(User::factory()->create())
+        ->post(route('routines.store'), routineForm(['timezone' => 'America/Louisville']))
+        ->assertSessionHasErrors('timezone');
+});
+
 test('a routine is scheduled for its next run in its timezone', function () {
     $user = User::factory()->create();
 
