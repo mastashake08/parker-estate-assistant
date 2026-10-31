@@ -45,6 +45,9 @@ export type AudioGeneration = {
         lyrics?: string;
         unknown_words?: string[];
         lead_in_beats?: number;
+        /** "browser" for music made in the browser and uploaded. */
+        source?: 'browser';
+        device?: 'webgpu' | 'wasm' | null;
     };
     size: number | null;
     duration: number | null;

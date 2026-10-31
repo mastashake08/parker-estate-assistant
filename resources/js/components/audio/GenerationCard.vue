@@ -86,6 +86,11 @@ const remove = () => {
                 <p class="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                     <span>{{ formatTime(generation.created_at) }}</span>
                     <span v-if="generation.model">{{ generation.model }}</span>
+                    <span v-if="generation.options.source === 'browser'"
+                        >Made in the browser ({{
+                            generation.options.device
+                        }})</span
+                    >
                     <span v-if="generation.options.voice"
                         >Voice: {{ generation.options.voice }}</span
                     >

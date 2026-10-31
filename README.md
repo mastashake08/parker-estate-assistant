@@ -24,7 +24,7 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 - **Skills**: named instructions the assistant loads on demand when a task matches the skill's description.
 - **Audio studio**: a page for making audio with local models, and playing it in the browser. See [Audio studio](#audio-studio).
     - **Speech** from Gradium's [Phonon](https://huggingface.co/gradium/phonon-31m-en) text-to-speech models. Run one server per model and choose between them.
-    - **Music** from Meta's [MusicGen](https://huggingface.co/facebook/musicgen-small). Load any of its models from the page.
+    - **Music** from Meta's [MusicGen](https://huggingface.co/facebook/musicgen-small). Load any of its models from the page, or generate with `musicgen-small` right in your browser, with no server.
     - **MIDI stems** written by Llama 3: one track per instrument, played through any Web MIDI device or a built-in synth, with mute, solo and per-stem downloads.
     - **Sung vocals**: Llama 3 writes lyrics and a melody, the app writes them as a [DiffSinger](https://github.com/openvpi/DiffSinger) score (`.ds` file), and DiffSinger sings them.
 
@@ -170,6 +170,8 @@ WAV files play through the **Web Audio API**: a waveform you can click to seek, 
 **Speech models.** A Phonon server loads one model (`PTTS_MODEL`). To offer more, run another server, as in the commented `phonon-fr` service in `compose.yaml`, and add its URL to `PHONON_URLS`. The studio lists each server by the model it has loaded, with its voices. The app asks Phonon for raw PCM and adds the WAV header itself, because Phonon's streamed WAV has no length in its header and browsers may refuse to decode it.
 
 **MusicGen models** download from Hugging Face the first time they load, into the `sail-huggingface` volume. Choose one under **Engines** to load it now, or pick one when generating and it loads first. On a CPU, `musicgen-small` takes a few minutes for 30 seconds of music, and the larger models much longer.
+
+**Music in the browser.** Under **Music**, choose **Generate on: This browser** to run MusicGen on your own device with [Transformers.js](https://huggingface.co/docs/transformers.js) and an ONNX export of the model (`MUSICGEN_BROWSER_MODEL`, `Xenova/musicgen-small` by default). It runs in a Web Worker, so the page stays responsive. It uses WebGPU where the browser has it and falls back to WebAssembly, which is much slower, so keep pieces short (`MUSICGEN_BROWSER_MAX_SECONDS`, 15 by default). The first time, the browser downloads the model (several hundred MB) from huggingface.co and keeps it for next time. When the music is ready it's uploaded to your library like any other generation. No MusicGen service is needed for this, but the larger models still need it.
 
 **MIDI.** The model writes each stem's General MIDI instrument and notes as structured output (Ollama's JSON schema `format`). The app clamps them to MIDI's ranges and the length you asked for, puts drums on channel 10, and writes a Standard MIDI File.
 

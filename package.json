@@ -11,6 +11,7 @@
         "types:check": "vue-tsc --noEmit"
     },
     "dependencies": {
+        "@huggingface/transformers": "^4.3.1",
         "@inertiajs/vite": "^3.0.0",
         "@inertiajs/vue3": "^3.0.0",
         "@laravel/echo-vue": "^2.6.3",

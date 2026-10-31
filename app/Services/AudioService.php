@@ -18,6 +18,7 @@ use App\Services\Audio\MusicGenClient;
 use App\Services\Audio\PhononClient;
 use App\Services\Audio\Wav;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -86,6 +87,45 @@ class AudioService
         ]);
 
         GenerateAudio::dispatch($generation);
+
+        return $generation;
+    }
+
+    /**
+     * Save music the user made in their browser as a finished generation.
+     *
+     * @param  array{prompt: string, duration: int, device?: string|null}  $attributes
+     *
+     * @throws AudioServiceException When the file is not a WAV.
+     */
+    public function storeBrowserMusic(User $user, array $attributes, UploadedFile $file): AudioGeneration
+    {
+        $wav = (string) $file->get();
+
+        try {
+            $duration = Wav::duration($wav);
+        } catch (InvalidArgumentException) {
+            throw new AudioServiceException('The music is not a WAV file.');
+        }
+
+        $generation = $user->audioGenerations()->make([
+            'kind' => AudioKind::Music,
+            'status' => AudioGenerationStatus::Completed,
+            'title' => Str::limit(Str::squish($attributes['prompt']), 60),
+            'prompt' => $attributes['prompt'],
+            'model' => config('audio.music.browser_model'),
+            'options' => [
+                'duration' => (int) $attributes['duration'],
+                'source' => 'browser',
+                'device' => $attributes['device'] ?? null,
+            ],
+            'duration' => $duration,
+            'finished_at' => now(),
+        ]);
+
+        $generation->fill($this->store($generation, $wav))->save();
+
+        AudioGenerationUpdated::dispatch($generation);
 
         return $generation;
     }

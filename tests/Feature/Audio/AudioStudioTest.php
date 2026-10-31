@@ -12,6 +12,7 @@ use App\Services\Audio\Wav;
 use App\Services\AudioService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -400,3 +401,41 @@ test('only the configured musicgen models can be loaded', function () {
 
     Http::assertNothingSent();
 });
+
+test('music made in the browser is saved to the library', function () {
+    $user = User::factory()->create();
+    $wav = UploadedFile::fake()->createWithContent('music.wav', Wav::fromPcm16(str_repeat("\0\0", 32000 * 3), 32000));
+
+    $this->actingAs($user)
+        ->post(route('audio.generations.browser.store'), ['prompt' => 'A lo-fi beat', 'duration' => 3, 'device' => 'webgpu', 'audio' => $wav])
+        ->assertRedirect(route('audio.index'))
+        ->assertInertiaFlash('toast.type', 'success');
+
+    $generation = AudioGeneration::sole();
+
+    expect($generation->user_id)->toBe($user->id)
+        ->and($generation->kind)->toBe(AudioKind::Music)
+        ->and($generation->status)->toBe(AudioGenerationStatus::Completed)
+        ->and($generation->model)->toBe('Xenova/musicgen-small')
+        ->and($generation->duration)->toBe(3.0)
+        ->and($generation->options)->toBe(['duration' => 3, 'source' => 'browser', 'device' => 'webgpu'])
+        ->and(Storage::disk('local')->get($generation->path))->toStartWith('RIFF');
+
+    Event::assertDispatched(AudioGenerationUpdated::class);
+});
+
+test('browser uploads must be wav files within the limits', function (array $input, string $field) {
+    $wav = UploadedFile::fake()->createWithContent('music.wav', Wav::fromPcm16(str_repeat("\0\0", 3200), 32000));
+
+    $this->actingAs(User::factory()->create())
+        ->post(route('audio.generations.browser.store'), ['prompt' => 'A beat', 'duration' => 3, 'audio' => $wav, ...$input])
+        ->assertSessionHasErrors($field);
+
+    expect(AudioGeneration::count())->toBe(0);
+})->with([
+    'no file' => [['audio' => null], 'audio'],
+    'not audio' => [['audio' => UploadedFile::fake()->create('notes.pdf', 10, 'application/pdf')], 'audio'],
+    'not really a wav' => [['audio' => UploadedFile::fake()->createWithContent('music.wav', 'RIFF not a wave file')], 'audio'],
+    'too long' => [['duration' => 60], 'duration'],
+    'unknown device' => [['device' => 'cuda'], 'device'],
+]);

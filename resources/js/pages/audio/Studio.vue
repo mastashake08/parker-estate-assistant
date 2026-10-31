@@ -4,6 +4,7 @@ import { useEcho } from '@laravel/echo-vue';
 import { AudioLines, FileMusic, Mic, Music, RefreshCw } from '@lucide/vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import AudioGenerationController from '@/actions/App/Http/Controllers/Audio/AudioGenerationController';
+import BrowserGenerationController from '@/actions/App/Http/Controllers/Audio/BrowserGenerationController';
 import MusicModelController from '@/actions/App/Http/Controllers/Audio/MusicModelController';
 import GenerationCard from '@/components/audio/GenerationCard.vue';
 import Heading from '@/components/Heading.vue';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useBrowserMusicGen } from '@/composables/useBrowserMusicGen';
 import { index } from '@/routes/audio';
 import type {
     AudioGeneration,
@@ -33,9 +35,11 @@ const props = defineProps<{
         speechCharacters: number;
         musicSeconds: number;
         midiBars: number;
+        browserSeconds: number;
     };
     defaults: {
         musicModel: string;
+        browserMusicModel: string;
         midiModel: string;
         singingVoice: string | null;
     };
@@ -143,6 +147,85 @@ watch(
     { immediate: true },
 );
 
+/** Music can be made by the MusicGen service, or right here in the browser. */
+const musicSource = ref<'server' | 'browser'>('server');
+const inBrowser = computed(
+    () => form.kind === 'music' && musicSource.value === 'browser',
+);
+const { browser, generate: generateInBrowser } = useBrowserMusicGen();
+const browserError = ref<string | null>(null);
+
+const maxSeconds = computed(() =>
+    inBrowser.value ? props.limits.browserSeconds : props.limits.musicSeconds,
+);
+
+watch(maxSeconds, (max) => {
+    form.duration = Math.min(form.duration, max);
+});
+
+const megabytes = (bytes: number) => `${Math.round(bytes / 1e6)} MB`;
+
+const browserStatus = computed(() => {
+    const progress = browser.progress;
+
+    if (!progress) {
+        return null;
+    }
+
+    return progress.stage === 'loading'
+        ? {
+              label: progress.total
+                  ? `Downloading ${props.defaults.browserMusicModel}: ${megabytes(progress.loaded)} of ${megabytes(progress.total)}`
+                  : `Loading ${props.defaults.browserMusicModel}…`,
+              value: progress.progress,
+          }
+        : {
+              label: `Generating: ${Math.round(progress.progress * 100)}%`,
+              value: progress.progress,
+          };
+});
+
+/** Make the music in this browser, then save it to the library. */
+const submitInBrowser = async () => {
+    browserError.value = null;
+
+    const prompt = form.prompt;
+    const duration = Math.min(form.duration, props.limits.browserSeconds);
+
+    let result;
+
+    try {
+        result = await generateInBrowser({
+            model: props.defaults.browserMusicModel,
+            prompt,
+            seconds: duration,
+        });
+    } catch (error) {
+        browserError.value = `MusicGen could not run in this browser: ${error instanceof Error ? error.message : error}`;
+
+        return;
+    }
+
+    router.post(
+        BrowserGenerationController.store.url(),
+        {
+            prompt,
+            duration,
+            device: result.device,
+            audio: new File([result.wav], 'music.wav', { type: 'audio/wav' }),
+        },
+        {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => form.reset('prompt'),
+            onError: (errors) => {
+                browserError.value =
+                    Object.values(errors)[0] ?? 'The music could not be saved.';
+            },
+        },
+    );
+};
+
 const placeholders: Record<AudioKind, string> = {
     speech: 'Welcome home. The lights are on and dinner is at seven.',
     music: 'A warm lo-fi hip hop beat with mellow Rhodes chords and vinyl crackle',
@@ -155,6 +238,10 @@ const canSubmit = computed(() => {
         return false;
     }
 
+    if (inBrowser.value) {
+        return browser.supported && !browser.busy;
+    }
+
     return form.kind === 'speech'
         ? !!form.server
         : form.kind === 'vocals'
@@ -163,6 +250,12 @@ const canSubmit = computed(() => {
 });
 
 const submit = () => {
+    if (inBrowser.value) {
+        submitInBrowser();
+
+        return;
+    }
+
     form.transform((data) => {
         const base = { kind: data.kind, prompt: data.prompt };
 
@@ -512,8 +605,56 @@ const shown = computed(() =>
                 </div>
             </div>
 
+            <fieldset v-if="form.kind === 'music'" class="grid gap-2">
+                <legend class="mb-2 text-sm font-medium">Generate on</legend>
+                <div class="flex flex-wrap gap-4 text-sm">
+                    <label class="flex items-center gap-2">
+                        <input
+                            v-model="musicSource"
+                            type="radio"
+                            value="server"
+                            class="accent-primary"
+                        />
+                        The MusicGen server
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input
+                            v-model="musicSource"
+                            type="radio"
+                            value="browser"
+                            class="accent-primary"
+                            :disabled="!browser.supported"
+                        />
+                        This browser
+                    </label>
+                </div>
+                <p v-if="inBrowser" class="text-xs text-muted-foreground">
+                    Runs {{ defaults.browserMusicModel }} on this device with
+                    {{ browser.webgpu ? 'WebGPU' : 'WebAssembly' }}, then saves
+                    it to your library. The first time downloads the model
+                    (several hundred MB), which the browser keeps for next time.
+                    <template v-if="!browser.webgpu">
+                        Without WebGPU it is slow, so keep pieces
+                        short.</template
+                    >
+                </p>
+                <p
+                    v-if="!browser.supported"
+                    class="text-xs text-muted-foreground"
+                >
+                    This browser cannot run MusicGen (it needs Web Workers and
+                    WebAssembly).
+                </p>
+            </fieldset>
+
             <div v-if="form.kind === 'music'" class="grid gap-4 sm:grid-cols-2">
-                <div class="grid gap-2">
+                <div v-if="inBrowser" class="grid gap-2">
+                    <Label>Model</Label>
+                    <p class="flex h-9 items-center font-mono text-sm">
+                        {{ defaults.browserMusicModel }}
+                    </p>
+                </div>
+                <div v-else class="grid gap-2">
                     <Label for="music-model">Model</Label>
                     <select
                         id="music-model"
@@ -543,12 +684,35 @@ const shown = computed(() =>
                         v-model.number="form.duration"
                         type="range"
                         min="1"
-                        :max="limits.musicSeconds"
+                        :max="maxSeconds"
                         class="accent-primary"
                     />
                     <InputError :message="form.errors.duration" />
                 </div>
             </div>
+
+            <div
+                v-if="inBrowser && browserStatus"
+                class="space-y-1"
+                aria-live="polite"
+            >
+                <div
+                    class="h-2 overflow-hidden rounded-full bg-muted"
+                    role="progressbar"
+                    :aria-valuenow="Math.round(browserStatus.value * 100)"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                >
+                    <div
+                        class="h-full bg-primary transition-[width]"
+                        :style="{ width: `${browserStatus.value * 100}%` }"
+                    />
+                </div>
+                <p class="text-xs text-muted-foreground">
+                    {{ browserStatus.label }}
+                </p>
+            </div>
+            <InputError v-if="inBrowser" :message="browserError ?? undefined" />
 
             <div
                 v-if="form.kind === 'midi' || form.kind === 'vocals'"
@@ -656,11 +820,14 @@ const shown = computed(() =>
 
             <div class="flex items-center gap-3">
                 <Button type="submit" :disabled="!canSubmit">
-                    <Spinner v-if="form.processing" class="h-4 w-4" />
-                    Generate
+                    <Spinner
+                        v-if="form.processing || (inBrowser && browser.busy)"
+                        class="h-4 w-4"
+                    />
+                    {{ inBrowser ? 'Generate in this browser' : 'Generate' }}
                 </Button>
                 <p
-                    v-if="form.kind === 'music'"
+                    v-if="form.kind === 'music' && !inBrowser"
                     class="text-xs text-muted-foreground"
                 >
                     On a CPU, MusicGen can take several minutes for 30 seconds

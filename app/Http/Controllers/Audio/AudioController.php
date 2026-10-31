@@ -43,9 +43,11 @@ class AudioController extends Controller
                 'speechCharacters' => config()->integer('audio.speech.max_characters'),
                 'musicSeconds' => config()->integer('audio.music.max_seconds'),
                 'midiBars' => config()->integer('audio.midi.max_bars'),
+                'browserSeconds' => config()->integer('audio.music.browser_max_seconds'),
             ],
             'defaults' => [
                 'musicModel' => config('audio.music.model'),
+                'browserMusicModel' => config('audio.music.browser_model'),
                 'midiModel' => config('audio.midi.model'),
                 'singingVoice' => config('audio.singing.voice'),
             ],

@@ -39,6 +39,12 @@ return [
         'models' => $list(env('MUSICGEN_MODELS', 'facebook/musicgen-small,facebook/musicgen-medium,facebook/musicgen-large,facebook/musicgen-stereo-small,facebook/musicgen-stereo-medium')),
         'max_seconds' => (int) env('MUSICGEN_MAX_SECONDS', 30),
         'timeout' => (int) env('MUSICGEN_TIMEOUT', 1200),
+
+        // Music can also be made in the browser, with Transformers.js and an
+        // ONNX export of MusicGen, and uploaded to the library when it is done.
+        'browser_model' => env('MUSICGEN_BROWSER_MODEL', 'Xenova/musicgen-small'),
+        'browser_max_seconds' => (int) env('MUSICGEN_BROWSER_MAX_SECONDS', 15),
+        'upload_kilobytes' => 30 * 1024,
     ],
 
     /*
