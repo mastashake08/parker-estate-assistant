@@ -73,6 +73,58 @@ services:
             TIMEOUT: '${BROWSER_SESSION_TIMEOUT:-60000}'
         networks:
             - sail
+    # Audio studio engines. They start with COMPOSE_PROFILES=audio (set in .env.example).
+    phonon:
+        image: 'ghcr.io/gradium-ai/ptts-openai-server:${PHONON_VERSION:-latest}'
+        profiles: [audio]
+        environment:
+            PTTS_LANG: '${PTTS_LANG:-en}'
+            PTTS_QUANT: q8
+            # Empty serves Phonon 31m English; set hf://owner/name[@revision] for another model.
+            PTTS_MODEL: '${PTTS_MODEL:-}'
+            HF_TOKEN: '${HF_TOKEN:-}'
+            HF_HOME: /home/phonon/.cache/huggingface
+        volumes:
+            - 'sail-phonon:/home/phonon/.cache/huggingface'
+        networks:
+            - sail
+    # A second speech model is a second server; add its URL to PHONON_URLS.
+    # phonon-fr:
+    #     image: 'ghcr.io/gradium-ai/ptts-openai-server:${PHONON_VERSION:-latest}'
+    #     profiles: [audio]
+    #     environment:
+    #         PTTS_LANG: fr
+    #         PTTS_QUANT: q8
+    #         PTTS_MODEL: 'hf://gradium/phonon-40m-fr'
+    #         HF_TOKEN: '${HF_TOKEN:-}'
+    #         HF_HOME: /home/phonon/.cache/huggingface
+    #     volumes:
+    #         - 'sail-phonon:/home/phonon/.cache/huggingface'
+    #     networks:
+    #         - sail
+    musicgen:
+        build:
+            context: ./services/musicgen
+        profiles: [audio]
+        environment:
+            MUSICGEN_MODEL: '${MUSICGEN_MODEL:-facebook/musicgen-small}'
+            MUSICGEN_MAX_SECONDS: '${MUSICGEN_MAX_SECONDS:-30}'
+            HF_TOKEN: '${HF_TOKEN:-}'
+        volumes:
+            - 'sail-huggingface:/cache/huggingface'
+        networks:
+            - sail
+    diffsinger:
+        build:
+            context: ./services/diffsinger
+        profiles: [audio]
+        environment:
+            DIFFSINGER_TIMEOUT: '${DIFFSINGER_TIMEOUT:-900}'
+        volumes:
+            # Your DiffSinger voices (experiments, vocoder and voices.json); see storage/diffsinger/README.md.
+            - './storage/diffsinger:/opt/DiffSinger/checkpoints'
+        networks:
+            - sail
 networks:
     sail:
         driver: bridge
@@ -80,4 +132,8 @@ volumes:
     sail-mysql:
         driver: local
     sail-redis:
+        driver: local
+    sail-phonon:
+        driver: local
+    sail-huggingface:
         driver: local

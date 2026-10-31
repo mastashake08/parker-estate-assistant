@@ -12,3 +12,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
 require __DIR__.'/settings.php';
 
 require __DIR__.'/assistant.php';
+
+require __DIR__.'/audio.php';

@@ -35,6 +35,10 @@ export default defineConfig({
             formVariants: true,
         }),
     ]),
+    // Workers are ES modules, so the browser MusicGen worker can load Transformers.js on demand.
+    worker: {
+        format: 'es',
+    },
     server: {
         ...(hmrHost ? { hmr: { host: hmrHost } } : {}),
         watch: {

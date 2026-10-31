@@ -22,6 +22,11 @@ Built with Laravel 13, Inertia + Vue, and the [Laravel AI SDK](https://github.co
 - **Read aloud**: press **Listen** under any reply, or turn on the speaker button next to Send to hear each new reply. It uses the browser's built-in speech synthesis, so it works offline and nothing is sent anywhere. Choose the voice and speed under **Settings → Appearance**; they're saved per device.
 - **Routines**: schedule the assistant to do something on its own, such as a morning brief at 8 AM on weekdays. Each routine has its own instructions, schedule and timezone, model, and the tools it may use. Every run is saved as a chat, and the result can also be emailed or texted to you. See [Routines](#routines).
 - **Skills**: named instructions the assistant loads on demand when a task matches the skill's description.
+- **Audio studio**: a page for making audio with local models, and playing it in the browser. See [Audio studio](#audio-studio).
+    - **Speech** from Gradium's [Phonon](https://huggingface.co/gradium/phonon-31m-en) text-to-speech models. Run one server per model and choose between them.
+    - **Music** from Meta's [MusicGen](https://huggingface.co/facebook/musicgen-small). Load any of its models from the page, or generate with `musicgen-small` right in your browser, with no server.
+    - **MIDI stems** written by Llama 3: one track per instrument, played through any Web MIDI device or a built-in synth, with mute, solo and per-stem downloads.
+    - **Sung vocals**: Llama 3 writes lyrics and a melody, the app writes them as a [DiffSinger](https://github.com/openvpi/DiffSinger) score (`.ds` file), and DiffSinger sings them.
 
 ## Requirements
 
@@ -134,11 +139,56 @@ The text goes into the assistant's instructions for that conversation, shared be
 
 `send_email` uses the app's mailer, so set `MAIL_MAILER` and its settings in `.env` (with the default `log` mailer, emails are only written to `storage/logs/laravel.log`). `send_sms` needs `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and a `TWILIO_FROM` number, and numbers must be in international format (`+15025550123`). Twilio errors, including unverified numbers on trial accounts, are reported back to the assistant instead of being ignored.
 
+### Audio studio
+
+**Audio studio** in the sidebar makes four kinds of audio. Each runs on the queue and appears in the library when it's ready, which the page hears about over Reverb. Files are kept on the private `local` disk under `audio/`.
+
+| Kind   | Engine                                       | Result                                                    |
+| ------ | -------------------------------------------- | --------------------------------------------------------- |
+| Speech | Phonon, through `ptts-openai-server`         | WAV                                                       |
+| Music  | MusicGen, through `services/musicgen`        | WAV                                                       |
+| MIDI   | Llama 3 (`AUDIO_MIDI_MODEL`) through Ollama  | A multi-track `.mid`, and each stem on its own            |
+| Vocals | Llama 3 for lyrics, DiffSinger for the voice | WAV, the DiffSinger score (`.ds`), and the melody as MIDI |
+
+WAV files play through the **Web Audio API**: a waveform you can click to seek, a level meter, volume and looping. MIDI stems play through the **Web MIDI API**. Press **Use MIDI devices**, allow access, and choose an output such as a hardware synth, a DAW or a virtual port (IAC on macOS, loopMIDI on Windows). Until you do, or in browsers without Web MIDI, a small built-in Web Audio synth plays them. Each stem has mute and solo, and you can change the tempo and loop.
+
+`COMPOSE_PROFILES=audio` (in `.env.example`) starts the three engines with Sail. MusicGen and DiffSinger are built from `services/`, CPU-only by default; pass `--build-arg TORCH_INDEX=https://download.pytorch.org/whl/cu124` for an NVIDIA GPU.
+
+| Variable                  | Default                      | Purpose                                                             |
+| ------------------------- | ---------------------------- | ------------------------------------------------------------------- |
+| `PHONON_URLS`             | `http://phonon:8880`         | Phonon servers, comma-separated; each serves one model              |
+| `PTTS_LANG`, `PTTS_MODEL` | `en`, Phonon 31m English     | The `phonon` service's language and model                           |
+| `MUSICGEN_URL`            | `http://musicgen:8000`       | The MusicGen service                                                |
+| `MUSICGEN_MODEL`          | `facebook/musicgen-small`    | The model loaded at start and used by default                       |
+| `MUSICGEN_MODELS`         | small, medium, large, stereo | Models the studio may load                                          |
+| `MUSICGEN_MAX_SECONDS`    | `30`                         | Longest piece                                                       |
+| `AUDIO_MIDI_MODEL`        | `llama3`                     | The Ollama model that writes MIDI and lyrics (`ollama pull llama3`) |
+| `DIFFSINGER_URL`          | `http://diffsinger:8000`     | The DiffSinger service                                              |
+| `DIFFSINGER_VOICE`        | (first installed)            | The singing voice chosen first                                      |
+| `DB_QUEUE_RETRY_AFTER`    | `90` (`1300` in the example) | Must be longer than the longest job (MusicGen allows 21 minutes)    |
+
+**Speech models.** A Phonon server loads one model (`PTTS_MODEL`). To offer more, run another server, as in the commented `phonon-fr` service in `compose.yaml`, and add its URL to `PHONON_URLS`. The studio lists each server by the model it has loaded, with its voices. The app asks Phonon for raw PCM and adds the WAV header itself, because Phonon's streamed WAV has no length in its header and browsers may refuse to decode it.
+
+**MusicGen models** download from Hugging Face the first time they load, into the `sail-huggingface` volume. Choose one under **Engines** to load it now, or pick one when generating and it loads first. On a CPU, `musicgen-small` takes a few minutes for 30 seconds of music, and the larger models much longer.
+
+**Music in the browser.** Under **Music**, choose **Generate on: This browser** to run MusicGen on your own device with [Transformers.js](https://huggingface.co/docs/transformers.js) and an ONNX export of the model (`MUSICGEN_BROWSER_MODEL`, `Xenova/musicgen-small` by default). It runs in a Web Worker, so the page stays responsive. It uses WebGPU where the browser has it and falls back to WebAssembly, which is much slower, so keep pieces short (`MUSICGEN_BROWSER_MAX_SECONDS`, 15 by default). The first time, the browser downloads the model (several hundred MB) from huggingface.co and keeps it for next time. When the music is ready it's uploaded to your library like any other generation. No MusicGen service is needed for this, but the larger models still need it.
+
+**MIDI.** The model writes each stem's General MIDI instrument and notes as structured output (Ollama's JSON schema `format`). The app clamps them to MIDI's ranges and the length you asked for, puts drums on channel 10, and writes a Standard MIDI File.
+
+**Vocals and DiffSinger.** DiffSinger has no pretrained voice built in. Add your own voices (acoustic models, optional variance models and a vocoder) to `storage/diffsinger`, as [its README](storage/diffsinger/README.md) describes. To sing:
+
+1. The language model writes the lyrics and melody, one word (or, for Chinese and Japanese voices, one syllable) per note, with `-` to hold a word over several notes.
+2. The app spells each word in the voice's phonemes using its dictionary, which the service reads from the voice's config. It then writes the `.ds` score: one segment per line, with `ph_seq`, `ph_num` (each word's group starts at its vowel, on the note), `note_seq`/`note_dur`/`note_slur`, and estimated `ph_dur` and `f0_seq` so a voice without a variance model can still sing it.
+3. The service runs DiffSinger's `scripts/infer.py`: the variance model, if the voice has one, predicts natural timing and pitch, then the acoustic model sings.
+
+Words the dictionary doesn't know are sung on an open vowel and listed under the result. The score is kept even when singing fails, so you can download it and open it in another DiffSinger editor.
+
 ## Security notes
 
 - **Local MCP servers run commands on the host.** Anyone who can sign in can add one. If anyone but you can reach the app, set `ASSISTANT_MCP_STDIO=false`.
 - **`web_fetch` refuses non-public addresses.** That covers `localhost`, private ranges, cloud metadata and Docker service names, so the model can't be steered into reading internal services. If a public page redirects somewhere private, the content is withheld. The browser still makes that redirected request.
-- **Conversations, MCP servers, skills and tool settings are per user.** Other users' records return 404.
+- **Conversations, MCP servers, skills, tool settings and audio are per user.** Other users' records return 404.
+- **The audio engines have no authentication.** Keep `phonon`, `musicgen` and `diffsinger` on the Docker network, as `compose.yaml` does, rather than publishing their ports. The studio only sends speech to the servers listed in `PHONON_URLS`.
 
 ## Architecture
 
@@ -148,10 +198,14 @@ Controllers are thin. They validate with form requests, authorize with policies,
 app/
 ├── Ai/
 │   ├── Agents/EstateAssistant.php   # The agent: instructions, tools, skills, conversation memory
+│   ├── Agents/MidiComposer.php      # Writes MIDI stems as structured output
+│   ├── Agents/LyricsComposer.php    # Writes lyrics and their melody as structured output
 │   └── Tools/                       # Built-in tools (CurrentDateTime, WebSearch, WebFetch)
 ├── Events/AssistantReplyStreamed.php  # Broadcasts each streamed event to the user's channel
 ├── Jobs/StreamAssistantReply.php      # Runs one reply on the queue
+├── Jobs/GenerateAudio.php             # Makes one speech, music, MIDI or vocals generation
 ├── Http/Controllers/Assistant/      # Chat, MCP servers, tools, skills
+├── Http/Controllers/Audio/          # The audio studio, its files and MusicGen models
 ├── Models/                          # McpServer, Skill, DisabledTool
 └── Services/
     ├── AssistantService.php         # Queues a reply; builds the agent and streams the reply
@@ -161,9 +215,18 @@ app/
     ├── ToolService.php              # Tool catalog, on/off switches, enabled tools for a user
     ├── WebFetchService.php          # Public-only page fetching
     ├── WebSearchService.php         # Formats search results for the model
+    ├── AudioService.php             # Queues and makes audio; normalizes what the models write
+    ├── Audio/                       # Phonon, MusicGen and DiffSinger clients; MIDI, WAV and .ds writers
     ├── Search/                      # SearchEngine contract + DuckDuckGo, SearXNG, Brave and Tavily
     ├── Browser/                     # Browser contract + headless Chrome implementation
     └── Mcp/                         # MCP connector contract + laravel/mcp client implementation
+services/
+├── musicgen/                        # FastAPI service that runs MusicGen
+└── diffsinger/                      # FastAPI service that sings .ds scores with DiffSinger
+resources/js/
+├── pages/audio/Studio.vue           # The audio studio
+├── components/audio/                # Web Audio WAV player, Web MIDI stem player, library cards
+└── lib/audio/                       # Lookahead sequencer, Web MIDI and synth outputs
 ```
 
 Tools are identified by a key: `builtin:{name}` for built-in tools and `mcp:{server id}:{tool name}` for MCP tools. Tools are enabled by default, and switching one off stores a row in `disabled_tools`.
@@ -189,3 +252,10 @@ DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan test
 ```
 
 Before pushing, `composer test` runs Pint, PHPStan and the test suite.
+
+The audio engines are faked too. The two Python services have their own tests, which stand in for the models:
+
+```bash
+cd services/musicgen && pip install -r requirements-dev.txt && pytest
+cd services/diffsinger && pip install -r requirements-dev.txt && pytest
+```

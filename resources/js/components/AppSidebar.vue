@@ -2,6 +2,7 @@
 import { Link } from '@inertiajs/vue3';
 import {
     AlarmClock,
+    AudioLines,
     BookOpen,
     FolderGit2,
     LayoutGrid,
@@ -24,6 +25,7 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { index as audio } from '@/routes/audio';
 import { index as chat } from '@/routes/chat';
 import { index as mcpServers } from '@/routes/mcp-servers';
 import { index as routines } from '@/routes/routines';
@@ -41,6 +43,11 @@ const mainNavItems: NavItem[] = [
         title: 'Chat',
         href: chat(),
         icon: MessageSquare,
+    },
+    {
+        title: 'Audio studio',
+        href: audio(),
+        icon: AudioLines,
     },
     {
         title: 'MCP servers',
